@@ -353,7 +353,8 @@ function buildCards(){
 }
 
 function buildTableHead(){
-  const cols=['วันที่',...CUSTOMERS.map(c=>c.name),'รวมส่ง',''];
+  const wsCusts=CUSTOMERS.filter(c=>!RETAIL_CUSTOMERS.has(c.key));
+  const cols=['วันที่',...wsCusts.map(c=>c.name),'ปลีก','รวมทั้งหมด',''];
   document.getElementById('tbl-head').innerHTML=`<tr>${cols.map((c,i)=>`<th style="${i===0?'text-align:left':''}">${c}</th>`).join('')}</tr>`;
 }
 
@@ -498,14 +499,20 @@ function renderHistory(){
   const sorted=Object.keys(records).sort((a,b)=>b.localeCompare(a));
   if(!sorted.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
+  const wsCusts=CUSTOMERS.filter(c=>!RETAIL_CUSTOMERS.has(c.key));
   tbody.innerHTML=sorted.map(date=>{
     const r=records[date]; let grand=0;
-    const cells=CUSTOMERS.map(c=>{
-      const kg=custKg(c,r); grand+=kg; let label=fmtKg(kg);
-      return `<td style="color:${c.color}">${label}</td>`;
+    const cells=wsCusts.map(c=>{
+      const kg=custKg(c,r); grand+=kg;
+      return `<td style="color:${c.color}">${fmtKg(kg)}</td>`;
     }).join('');
+    const rtTxns=rtData[date]||[];
+    const rtTotal=rtTxns.reduce((s,t)=>s+t.kg,0);
+    const extraKg=CUSTOMERS.filter(c=>RETAIL_CUSTOMERS.has(c.key)).reduce((s,c)=>s+custKg(c,r),0);
+    const totalPlik=rtTotal+extraKg;
+    const grandAll=grand+totalPlik;
     const hi=date===currentDate?'background:#EDF1F6;':'';
-    return `<tr style="${hi}"><td>${thDate(date)}</td>${cells}<td class="td-total">${fmtKg(grand)}</td><td><button class="del-btn" onclick="deleteEntry('${date}')">✕</button></td></tr>`;
+    return `<tr style="${hi}"><td>${thDate(date)}</td>${cells}<td>${fmtKg(totalPlik)}</td><td class="td-total">${fmtKg(grandAll)}</td><td><button class="del-btn" onclick="deleteEntry('${date}')">✕</button></td></tr>`;
   }).join('');
 }
 
@@ -602,7 +609,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   // listen retail realtime
   onValue(ref(db,'retail'), snap=>{
     rtData = snap.val()||{};
-    renderRetail();
+    renderRetail(); renderHistory();
   });
 
   // listen audit log realtime
