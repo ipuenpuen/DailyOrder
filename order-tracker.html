@@ -37,6 +37,8 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 .retail-input-card{background:var(--paper);border:1px solid var(--rule);border-radius:12px;padding:.9rem 1rem;flex:1;min-width:200px;}
 .ric-label{font-size:.68rem;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:.45rem;}
 .retail-kg-row{display:flex;align-items:center;gap:.55rem;}
+.retail-name-inp{width:130px;font-family:'Sarabun',sans-serif;font-size:1.8rem;font-weight:600;padding:.3rem .55rem;border:2px solid var(--rule);border-radius:8px;background:var(--bg);color:var(--ink);outline:none;transition:border-color .2s;}
+.retail-name-inp:focus{border-color:var(--accent);}
 .retail-kg-inp{flex:1;font-family:'JetBrains Mono',monospace;font-size:1.8rem;font-weight:600;text-align:right;border:2px solid var(--rule);border-radius:8px;padding:.3rem .55rem;background:var(--bg);color:var(--ink);outline:none;transition:border-color .2s;-moz-appearance:textfield;}
 .retail-kg-inp::-webkit-outer-spin-button,.retail-kg-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 .retail-kg-inp:focus{border-color:var(--accent);}
@@ -58,6 +60,7 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 .txn-item{display:flex;align-items:center;padding:.45rem .85rem;border-bottom:1px solid var(--rule);gap:.65rem;}
 .txn-item:last-child{border-bottom:none;}
 .txn-num{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--muted);width:1.1rem;flex-shrink:0;text-align:right;}
+.txn-name{font-size:.8rem;font-weight:600;color:var(--ink);min-width:40px;}
 .txn-kg{font-family:'JetBrains Mono',monospace;font-size:.88rem;font-weight:600;color:var(--ink);flex:1;}
 .txn-unit{font-size:.6rem;color:var(--muted);margin-left:.2rem;}
 .txn-time{font-family:'JetBrains Mono',monospace;font-size:.63rem;color:var(--muted);}
@@ -108,7 +111,7 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 .total-bar{background:var(--ink);color:#fff;border-radius:12px;padding:.72rem 1.1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.85rem;}
 .tb-left{display:flex;flex-direction:column;gap:.12rem;}
 .tb-label{font-size:.73rem;opacity:.7;}
-.tb-breakdown{font-size:.63rem;opacity:.5;font-family:'JetBrains Mono',monospace;}
+.tb-breakdown{font-size:.88rem;font-weight:600;font-family:'JetBrains Mono',monospace;}
 .tb-val{font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:700;}
 .tb-unit{font-size:.73rem;opacity:.7;margin-left:.25rem;}
 
@@ -185,9 +188,10 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
         <div class="rs-count" id="rt-count">0 ครั้ง</div>
       </div>
       <div class="retail-input-card">
-        <div class="ric-label">น้ำหนัก (กก.)</div>
+        <div class="ric-label">ลูกค้า / น้ำหนัก (กก.)</div>
         <div class="retail-kg-row">
-          <input class="retail-kg-inp" id="rt-inp" type="number" min="0" step="0.1" placeholder="0.0"/>
+          <input class="retail-name-inp" id="rt-name" type="text" placeholder="สด" maxlength="20"/>
+          <input class="retail-kg-inp" id="rt-inp" type="number" min="0" step="0.1" placeholder="0.0" onfocus="this.select()"/>
           <span class="rt-unit-lbl">กก.</span>
           <button class="btn-add-retail" onclick="addRetailTxn()">+ เพิ่ม</button>
         </div>
@@ -265,9 +269,11 @@ function todayStr(){ return new Date().toLocaleDateString('sv-SE'); }
 function thDate(str){
   if(!str) return '—';
   const [y,m,d]=str.split('-');
-  const wd=['อา','จ','อ','พ','พฤ','ศ','ส'][new Date(str).getDay()];
-  return `${d}/${m}/${y} (${wd})`;
+  const wd=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'][new Date(str).getDay()];
+  return `${d}/${m}/${y} ${wd}`;
 }
+// show decimal only if needed
+function fmtKg(kg){ return kg%1===0 ? kg.toFixed(0) : kg.toFixed(1); }
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
@@ -283,8 +289,8 @@ const MONO={accent:'#3B7DD8',accentLight:'#E8F0FB',ink:'#1E2A38',inkLight:'#2C3E
 const CUSTOMERS=[
   {key:'pearn',   name:'เปิ้ล',    color:MONO.slate, light:MONO.slateLt, type:'multi-kg', fields:[{id:'sapan',label:'สะพานปลา'},{id:'baan',label:'บ้าน'}]},
   {key:'muay',    name:'เจ้หมวย',  color:MONO.slate, light:MONO.slateLt, type:'multi-kg', fields:[{id:'ole',label:'โอเล่'},{id:'other',label:'อื่นๆ'}]},
-  {key:'wilai',   name:'ป.วิไล',   color:MONO.slate, light:MONO.slateLt, type:'tank', unit:'กระสอบ', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.slate},{id:'mt',label:'มีตรา',dot:MONO.slate}]},
-  {key:'raknong', name:'รักน้องพร',color:MONO.slate, light:MONO.slateLt, type:'tank', unit:'กระสอบ', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.slate},{id:'mt',label:'มีตรา',dot:MONO.slate}]},
+  {key:'wilai',   name:'ป.วิไล',   color:MONO.slate, light:MONO.slateLt, type:'tank', unit:'สอบ', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.slate},{id:'mt',label:'มีตรา',dot:MONO.slate}]},
+  {key:'raknong', name:'รักน้องพร',color:MONO.slate, light:MONO.slateLt, type:'tank', unit:'สอบ', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.slate},{id:'mt',label:'มีตรา',dot:MONO.slate}]},
   {key:'dragon',  name:'ร.มังกร',  color:MONO.slate, light:MONO.slateLt, type:'kg'},
   {key:'jeed',    name:'เจ้จี้ด',  color:MONO.slate, light:MONO.slateLt, type:'kg'},
   {key:'sakuna',  name:'สกุณา',    color:MONO.slate, light:MONO.slateLt, type:'kg'},
@@ -292,7 +298,7 @@ const CUSTOMERS=[
   {key:'tom',     name:'ต้อม',     color:MONO.slate, light:MONO.slateLt, type:'kg'},
   {key:'tip',     name:'ทิพย์',    color:MONO.slate, light:MONO.slateLt, type:'kg'},
   {key:'chaum',   name:'ชะอำ',     color:MONO.slate, light:MONO.slateLt, type:'kg'},
-  {key:'pop',     name:'ภพ',       color:MONO.slate, light:MONO.slateLt, type:'tank', unit:'กระสอบ', fields:[{id:'main',label:'ภพ',dot:MONO.slate}]},
+  {key:'pop',     name:'ภพ',       color:MONO.slate, light:MONO.slateLt, type:'tank', unit:'สอบ', fields:[{id:'main',label:'ภพ',dot:MONO.slate}]},
 ];
 
 let currentDate=todayStr();
@@ -316,8 +322,8 @@ function saveRT(){
 function refreshGrandTotal(){
   const totalRt=_rtKg+_extraRtKg;
   const g=_wsKg+totalRt;
-  document.getElementById('grand-total').textContent=g.toFixed(1);
-  document.getElementById('grand-breakdown').textContent=`ส่ง ${_wsKg.toFixed(1)} + ปลีก ${totalRt.toFixed(1)}`;
+  document.getElementById('grand-total').textContent=fmtKg(g);
+  document.getElementById('grand-breakdown').textContent=`ส่ง ${fmtKg(_wsKg)} + ปลีก ${fmtKg(totalRt)}`;
 }
 
 // ══ WHOLESALE UI ══
@@ -333,12 +339,12 @@ function buildCards(){
   document.getElementById('cards-container').innerHTML=CUSTOMERS.map(c=>{
     let b;
     if(c.type==='kg'){
-      b=`<div class="row"><label>${c.name}</label><input class="num-input" type="number" id="${c.key}" min="0" step="0.1" placeholder="0" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>`;
+      b=`<div class="row"><label>${c.name}</label><input class="num-input" type="number" id="${c.key}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>`;
     } else if(c.type==='multi-kg'){
-      b=(c.fields||[]).map(f=>`<div class="row"><label>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="0.1" placeholder="0" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>`).join('');
+      b=(c.fields||[]).map(f=>`<div class="row"><label>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>`).join('');
     } else {
       const unitLabel=c.unit||'ถัง';
-      b=(c.fields||[]).map(f=>`<div class="row"><label><span class="dot" style="background:${f.dot}"></span>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="1" placeholder="0" oninput="updateSummary()"/><span class="unit-lbl">${unitLabel}</span></div>`).join('')
+      b=(c.fields||[]).map(f=>`<div class="row"><label><span class="dot" style="background:${f.dot}"></span>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">${unitLabel}</span></div>`).join('')
         +`<div class="tank-chip" style="background:${c.light};color:${c.color}"><span class="tc-eq" id="${c.key}_eq">รวม 0 ${unitLabel} × 30 =</span><span class="tc-val" id="${c.key}_kg">0.0</span><span class="tc-unit">กก.</span></div>`;
     }
     return `<div class="card" style="border-top:3px solid ${c.color}"><div class="card-head" style="background:${c.light}"><h2 style="color:${c.color}">${c.name}</h2><div class="card-badge" id="badge_${c.key}" style="background:${c.color};color:#fff">0.0 กก.</div></div><div class="card-body">${b}</div></div>`;
@@ -365,10 +371,10 @@ window.updateSummary=function(){
       const unitLabel=c.unit||'ถัง';
       const eq=document.getElementById(c.key+'_eq'), ke=document.getElementById(c.key+'_kg');
       if(eq) eq.textContent=`รวม ${tanks} ${unitLabel} × 30 =`;
-      if(ke) ke.textContent=kg.toFixed(1);
+      if(ke) ke.textContent=fmtKg(kg);
     }
     const badge=document.getElementById('badge_'+c.key);
-    if(badge) badge.textContent=kg.toFixed(1)+' กก.';
+    if(badge) badge.textContent=fmtKg(kg)+' กก.';
     const card=badge?.closest('.card');
     if(card){
       card.classList.remove('state-zero','state-filled');
@@ -447,7 +453,7 @@ window.saveEntry=function(){
       };
       const before=getVal(prev), after=getVal(entry);
       if(before!==0 && before!==after)
-        changes.push({name:c.name, before:before.toFixed(1)+' กก.', after:after.toFixed(1)+' กก.'});
+        changes.push({name:c.name, before:fmtKg(before)+' กก.', after:fmtKg(after)+' กก.'});
     });
     if(changes.length){
       get(ref(db,'auditlog')).then(snap=>{
@@ -489,12 +495,11 @@ function renderHistory(){
   tbody.innerHTML=sorted.map(date=>{
     const r=records[date]; let grand=0;
     const cells=CUSTOMERS.map(c=>{
-      const kg=custKg(c,r); grand+=kg; let label=kg.toFixed(1);
-      if(c.type==='tank'){const tanks=(c.fields||[]).reduce((s,f)=>s+(r[c.key+'_'+f.id]||0),0);label+=` <span style="font-size:.58rem;opacity:.5">(${tanks}ถ)</span>`;}
+      const kg=custKg(c,r); grand+=kg; let label=fmtKg(kg);
       return `<td style="color:${c.color}">${label}</td>`;
     }).join('');
     const hi=date===currentDate?'background:#EDF1F6;':'';
-    return `<tr style="${hi}"><td>${thDate(date)}</td>${cells}<td class="td-total">${grand.toFixed(1)}</td><td><button class="del-btn" onclick="deleteEntry('${date}')">✕</button></td></tr>`;
+    return `<tr style="${hi}"><td>${thDate(date)}</td>${cells}<td class="td-total">${fmtKg(grand)}</td><td><button class="del-btn" onclick="deleteEntry('${date}')">✕</button></td></tr>`;
   }).join('');
 }
 
@@ -520,13 +525,15 @@ function applyFocusStyles(){
 // ══ RETAIL ══
 window.addRetailTxn=function(){
   const inp=document.getElementById('rt-inp');
+  const nameEl=document.getElementById('rt-name');
   const kg=parseFloat(inp.value);
   if(!kg||kg<=0){showToast('⚠️ กรอกน้ำหนักก่อน');inp.focus();return;}
+  const name=(nameEl.value.trim())||'สด';
   if(!rtData[currentDate]) rtData[currentDate]=[];
   const hhmm=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',hour12:false});
-  rtData[currentDate].push({id:Date.now(),kg:parseFloat(kg.toFixed(1)),time:hhmm});
-  saveRT(); inp.value=''; inp.focus();
-  showToast(`✅ เพิ่ม ${kg.toFixed(1)} กก.`);
+  rtData[currentDate].push({id:Date.now(),kg:parseFloat(kg.toFixed(1)),time:hhmm,name});
+  saveRT(); inp.value=''; nameEl.value=''; inp.focus();
+  showToast(`✅ เพิ่ม ${fmtKg(kg)} กก. (${name})`);
 }
 
 window.deleteRetailTxn=function(date,id){
@@ -552,7 +559,7 @@ function renderRetail(){
   const txns=rtData[currentDate]||[];
   const total=txns.reduce((s,t)=>s+t.kg,0);
   _rtKg=total; refreshGrandTotal();
-  document.getElementById('rt-total').textContent=total.toFixed(1);
+  document.getElementById('rt-total').textContent=fmtKg(total);
   document.getElementById('rt-count').textContent=`${txns.length} ครั้ง`;
   const scroll=document.getElementById('txn-scroll');
   const empty=document.getElementById('rt-empty');
@@ -561,9 +568,10 @@ function renderRetail(){
   empty.style.display='none';
   [...txns].reverse().forEach((t,ri)=>{
     const num=txns.length-ri;
+    const name=t.name||'สด';
     const div=document.createElement('div');
     div.className='txn-item';
-    div.innerHTML=`<span class="txn-num">${num}</span><span class="txn-kg">${t.kg.toFixed(1)}<span class="txn-unit">กก.</span></span><span class="txn-time">${t.time}</span><button class="txn-del" onclick="deleteRetailTxn('${currentDate}',${t.id})">✕</button>`;
+    div.innerHTML=`<span class="txn-num">${num}</span><span class="txn-name">${name}</span><span class="txn-kg">${fmtKg(t.kg)}<span class="txn-unit">กก.</span></span><span class="txn-time">${t.time}</span><button class="txn-del" onclick="deleteRetailTxn('${currentDate}',${t.id})">✕</button>`;
     scroll.appendChild(div);
   });
 }
@@ -574,6 +582,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('date-input').value=currentDate;
   renderDateDisplay();
   document.getElementById('rt-inp').addEventListener('keydown',e=>{if(e.key==='Enter')addRetailTxn();});
+  document.getElementById('rt-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('rt-inp').focus();});
 
   showStatus('กำลังเชื่อมต่อ…');
 
