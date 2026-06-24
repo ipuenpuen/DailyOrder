@@ -275,8 +275,8 @@ const MONO={accent:'#3B7DD8',accentLight:'#E8F0FB',ink:'#1E2A38',inkLight:'#2C3E
 const CUSTOMERS=[
   {key:'pearn',   name:'เปิ้ล',    color:MONO.slate, light:MONO.slateLt, type:'multi-kg', fields:[{id:'sapan',label:'สะพานปลา'},{id:'baan',label:'บ้าน'}]},
   {key:'muay',    name:'เจ้หมวย',  color:MONO.slate, light:MONO.slateLt, type:'multi-kg', fields:[{id:'ole',label:'โอเล่'},{id:'other',label:'อื่นๆ'}]},
-  {key:'wilai',   name:'ป.วิไล',   color:MONO.slate, light:MONO.slateLt, type:'tank', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.slate},{id:'mt',label:'มีตรา',dot:MONO.slate}]},
-  {key:'raknong', name:'รักน้องพร',color:MONO.slate, light:MONO.slateLt, type:'tank', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.slate},{id:'mt',label:'มีตรา',dot:MONO.slate}]},
+  {key:'wilai',   name:'ป.วิไล',   color:MONO.slate, light:MONO.slateLt, type:'tank', unit:'กระสอบ', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.slate},{id:'mt',label:'มีตรา',dot:MONO.slate}]},
+  {key:'raknong', name:'รักน้องพร',color:MONO.slate, light:MONO.slateLt, type:'tank', unit:'กระสอบ', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.slate},{id:'mt',label:'มีตรา',dot:MONO.slate}]},
   {key:'dragon',  name:'ร.มังกร',  color:MONO.slate, light:MONO.slateLt, type:'kg'},
   {key:'jeed',    name:'เจ้จี้ด',  color:MONO.slate, light:MONO.slateLt, type:'kg'},
   {key:'sakuna',  name:'สกุณา',    color:MONO.slate, light:MONO.slateLt, type:'kg'},
@@ -284,13 +284,13 @@ const CUSTOMERS=[
   {key:'tom',     name:'ต้อม',     color:MONO.slate, light:MONO.slateLt, type:'kg'},
   {key:'tip',     name:'ทิพย์',    color:MONO.slate, light:MONO.slateLt, type:'kg'},
   {key:'chaum',   name:'ชะอำ',     color:MONO.slate, light:MONO.slateLt, type:'kg'},
-  {key:'pop',     name:'ภพ',       color:MONO.slate, light:MONO.slateLt, type:'kg'},
+  {key:'pop',     name:'ภพ',       color:MONO.slate, light:MONO.slateLt, type:'tank', unit:'กระสอบ', fields:[{id:'main',label:'ภพ',dot:MONO.slate}]},
 ];
 
 let currentDate=todayStr();
-let records={};   // wholesale
-let rtData={};    // retail
-let _wsKg=0, _rtKg=0;
+let records={};
+let rtData={};
+let _wsKg=0, _rtKg=0, _extraRtKg=0;
 
 // ══ FIREBASE: wholesale ══
 function saveWS(){
@@ -306,9 +306,10 @@ function saveRT(){
 
 // ══ GRAND TOTAL ══
 function refreshGrandTotal(){
-  const g=_wsKg+_rtKg;
+  const totalRt=_rtKg+_extraRtKg;
+  const g=_wsKg+totalRt;
   document.getElementById('grand-total').textContent=g.toFixed(1);
-  document.getElementById('grand-breakdown').textContent=`ส่ง ${_wsKg.toFixed(1)} + ปลีก ${_rtKg.toFixed(1)}`;
+  document.getElementById('grand-breakdown').textContent=`ส่ง ${_wsKg.toFixed(1)} + ปลีก ${totalRt.toFixed(1)}`;
 }
 
 // ══ WHOLESALE UI ══
@@ -328,8 +329,9 @@ function buildCards(){
     } else if(c.type==='multi-kg'){
       b=(c.fields||[]).map(f=>`<div class="row"><label>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="0.1" placeholder="0" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>`).join('');
     } else {
-      b=(c.fields||[]).map(f=>`<div class="row"><label><span class="dot" style="background:${f.dot}"></span>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="1" placeholder="0" oninput="updateSummary()"/><span class="unit-lbl">ถัง</span></div>`).join('')
-        +`<div class="tank-chip" style="background:${c.light};color:${c.color}"><span class="tc-eq" id="${c.key}_eq">รวม 0 ถัง × 30 =</span><span class="tc-val" id="${c.key}_kg">0.0</span><span class="tc-unit">กก.</span></div>`;
+      const unitLabel=c.unit||'ถัง';
+      b=(c.fields||[]).map(f=>`<div class="row"><label><span class="dot" style="background:${f.dot}"></span>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="1" placeholder="0" oninput="updateSummary()"/><span class="unit-lbl">${unitLabel}</span></div>`).join('')
+        +`<div class="tank-chip" style="background:${c.light};color:${c.color}"><span class="tc-eq" id="${c.key}_eq">รวม 0 ${unitLabel} × 30 =</span><span class="tc-val" id="${c.key}_kg">0.0</span><span class="tc-unit">กก.</span></div>`;
     }
     return `<div class="card" style="border-top:3px solid ${c.color}"><div class="card-head" style="background:${c.light}"><h2 style="color:${c.color}">${c.name}</h2><div class="card-badge" id="badge_${c.key}" style="background:${c.color};color:#fff">0.0 กก.</div></div><div class="card-body">${b}</div></div>`;
   }).join('');
@@ -341,8 +343,10 @@ function buildTableHead(){
   document.getElementById('tbl-head').innerHTML=`<tr>${cols.map((c,i)=>`<th style="${i===0?'text-align:left':''}">${c}</th>`).join('')}</tr>`;
 }
 
+const RETAIL_CUSTOMERS=new Set(['tip','chaum','pop']);
+
 window.updateSummary=function(){
-  let grand=0;
+  let wsKg=0, extraRtKg=0;
   CUSTOMERS.forEach(c=>{
     let kg=0;
     if(c.type==='kg') kg=getNum(c.key);
@@ -350,15 +354,19 @@ window.updateSummary=function(){
     else {
       const tanks=(c.fields||[]).reduce((s,f)=>s+getNum(c.key+'_'+f.id),0);
       kg=tanks*30;
+      const unitLabel=c.unit||'ถัง';
       const eq=document.getElementById(c.key+'_eq'), ke=document.getElementById(c.key+'_kg');
-      if(eq) eq.textContent=`รวม ${tanks} ถัง × 30 =`;
+      if(eq) eq.textContent=`รวม ${tanks} ${unitLabel} × 30 =`;
       if(ke) ke.textContent=kg.toFixed(1);
     }
     const badge=document.getElementById('badge_'+c.key);
     if(badge) badge.textContent=kg.toFixed(1)+' กก.';
-    grand+=kg;
+    if(RETAIL_CUSTOMERS.has(c.key)) extraRtKg+=kg;
+    else wsKg+=kg;
   });
-  _wsKg=grand; refreshGrandTotal();
+  _wsKg=wsKg;
+  _extraRtKg=extraRtKg;
+  refreshGrandTotal();
 }
 
 function loadIntoInputs(){
