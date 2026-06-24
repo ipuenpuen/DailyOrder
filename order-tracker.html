@@ -80,10 +80,18 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 
 /* ══ WHOLESALE CARDS ══ */
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.75rem;margin-bottom:1rem;}
-.card{background:var(--paper);border:1px solid var(--rule);border-radius:14px;overflow:hidden;}
+.card{background:var(--paper);border:1px solid var(--rule);border-radius:14px;overflow:hidden;transition:border-color .2s;}
+.card.state-zero{border-color:#EFBCBC;border-top-color:#C0392B;}
+.card.state-filled{border-color:#A8D5B5;border-top-color:#27AE60;}
 .card-head{padding:.6rem .95rem;display:flex;align-items:center;justify-content:space-between;}
+.card.state-zero .card-head{background:#FDF0F0;}
+.card.state-filled .card-head{background:#EFF8F2;}
 .card-head h2{font-size:.88rem;font-weight:700;}
 .card-badge{font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:600;padding:.16rem .46rem;border-radius:6px;}
+.card.state-zero .card-badge{background:#C0392B !important;color:#fff !important;}
+.card.state-filled .card-badge{background:#27AE60 !important;color:#fff !important;}
+.card.state-zero .card-head h2{color:#C0392B !important;}
+.card.state-filled .card-head h2{color:#27AE60 !important;}
 .card-body{padding:.75rem .95rem;}
 .row{display:flex;align-items:center;gap:.45rem;margin-bottom:.5rem;}
 .row:last-child{margin-bottom:0;}
@@ -361,6 +369,11 @@ window.updateSummary=function(){
     }
     const badge=document.getElementById('badge_'+c.key);
     if(badge) badge.textContent=kg.toFixed(1)+' กก.';
+    const card=badge?.closest('.card');
+    if(card){
+      card.classList.remove('state-zero','state-filled');
+      card.classList.add(kg>0?'state-filled':'state-zero');
+    }
     if(RETAIL_CUSTOMERS.has(c.key)) extraRtKg+=kg;
     else wsKg+=kg;
   });
