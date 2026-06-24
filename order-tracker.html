@@ -127,6 +127,20 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
 .del-btn:hover{color:#c0392b;background:#fdecea;}
 .empty{text-align:center;padding:2rem;color:var(--muted);font-size:.78rem;}
 
+/* ══ AUDIT LOG ══ */
+.audit-item{padding:.55rem 1rem;border-bottom:1px solid var(--rule);display:flex;flex-direction:column;gap:.2rem;}
+.audit-item:last-child{border-bottom:none;}
+.audit-top{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;}
+.audit-time{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted);white-space:nowrap;}
+.audit-date{font-size:.72rem;font-weight:600;color:var(--ink);}
+.audit-tag{font-size:.6rem;padding:.1rem .4rem;border-radius:4px;font-weight:700;}
+.audit-tag.new{background:#e8f5e9;color:#2e7d32;}
+.audit-tag.edit{background:#fff3e0;color:#e65100;}
+.audit-changes{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.15rem;}
+.audit-change{font-size:.68rem;background:var(--bg);border-radius:5px;padding:.15rem .45rem;color:var(--ink);}
+.audit-change .before{color:var(--muted);text-decoration:line-through;margin-right:.25rem;}
+.audit-change .after{font-weight:600;color:var(--slate, #3A5270);}
+
 /* ══ TOAST ══ */
 .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(60px);background:var(--ink);color:#fff;padding:.62rem 1.25rem;border-radius:9px;font-size:.8rem;transition:transform .3s,opacity .3s;opacity:0;pointer-events:none;z-index:999;white-space:nowrap;}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
@@ -207,6 +221,17 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
     <div class="empty" id="empty-msg">ยังไม่มีข้อมูล — กรอกแล้วกด บันทึก</div>
   </div>
 
+  <!-- AUDIT LOG -->
+  <div style="margin-top:2rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;padding-bottom:.4rem;border-bottom:1px solid var(--rule);">
+      <span class="section-label" style="margin:0;border:none;padding:0;">ประวัติการแก้ไข</span>
+      <button onclick="clearAuditLog()" style="font-size:.65rem;color:var(--muted);background:none;border:1px solid var(--rule);border-radius:5px;padding:.12rem .45rem;cursor:pointer;font-family:'Sarabun',sans-serif;">ล้างประวัติ</button>
+    </div>
+    <div id="audit-list" style="background:var(--paper);border:1px solid var(--rule);border-radius:12px;overflow:hidden;">
+      <div class="empty" id="audit-empty">ยังไม่มีประวัติการแก้ไข</div>
+    </div>
+  </div>
+
 </div>
 <div class="toast" id="toast"></div>
 
@@ -248,18 +273,18 @@ function showStatus(msg,ok=true){
 // ══ WHOLESALE CONFIG ══
 const MONO={accent:'#3B7DD8',accentLight:'#E8F0FB',ink:'#1E2A38',inkLight:'#2C3E55',mid:'#4A6480',muted:'#6B7A8D',mutedLight:'#EDF1F6',slate:'#3A5270',slateLt:'#E4EBF4'};
 const CUSTOMERS=[
-  {key:'pearn',   name:'เปิ้ล',    color:MONO.accent,   light:MONO.accentLight, type:'multi-kg', fields:[{id:'sapan',label:'สะพานปลา'},{id:'baan',label:'บ้าน'}]},
-  {key:'muay',    name:'เจ้หมวย',  color:MONO.slate,    light:MONO.slateLt,     type:'multi-kg', fields:[{id:'ole',label:'โอเล่'},{id:'other',label:'อื่นๆ'}]},
-  {key:'wilai',   name:'ป.วิไล',   color:MONO.mid,      light:MONO.slateLt,     type:'tank', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.accent},{id:'mt',label:'มีตรา',dot:MONO.mid}]},
-  {key:'raknong', name:'รักน้องพร',color:MONO.inkLight, light:MONO.mutedLight,  type:'tank', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.accent},{id:'mt',label:'มีตรา',dot:MONO.mid}]},
-  {key:'dragon',  name:'ร.มังกร',  color:MONO.ink,      light:MONO.mutedLight,  type:'kg'},
-  {key:'jeed',    name:'เจ้จี้ด',  color:MONO.accent,   light:MONO.accentLight, type:'kg'},
-  {key:'sakuna',  name:'สกุณา',    color:MONO.muted,    light:MONO.mutedLight,  type:'kg'},
-  {key:'jiab',    name:'เจี๊ยบ',   color:MONO.ink,      light:MONO.slateLt,     type:'kg'},
-  {key:'tom',     name:'ต้อม',     color:MONO.mid,      light:MONO.accentLight, type:'kg'},
-  {key:'tip',     name:'ทิพย์',    color:MONO.slate,    light:MONO.mutedLight,  type:'kg'},
-  {key:'chaum',   name:'ชะอำ',     color:MONO.inkLight, light:MONO.slateLt,     type:'kg'},
-  {key:'pop',     name:'ภพ',       color:MONO.muted,    light:MONO.accentLight, type:'kg'},
+  {key:'pearn',   name:'เปิ้ล',    color:MONO.slate, light:MONO.slateLt, type:'multi-kg', fields:[{id:'sapan',label:'สะพานปลา'},{id:'baan',label:'บ้าน'}]},
+  {key:'muay',    name:'เจ้หมวย',  color:MONO.slate, light:MONO.slateLt, type:'multi-kg', fields:[{id:'ole',label:'โอเล่'},{id:'other',label:'อื่นๆ'}]},
+  {key:'wilai',   name:'ป.วิไล',   color:MONO.slate, light:MONO.slateLt, type:'tank', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.slate},{id:'mt',label:'มีตรา',dot:MONO.slate}]},
+  {key:'raknong', name:'รักน้องพร',color:MONO.slate, light:MONO.slateLt, type:'tank', fields:[{id:'wb',label:'ถุงขาว',dot:MONO.slate},{id:'mt',label:'มีตรา',dot:MONO.slate}]},
+  {key:'dragon',  name:'ร.มังกร',  color:MONO.slate, light:MONO.slateLt, type:'kg'},
+  {key:'jeed',    name:'เจ้จี้ด',  color:MONO.slate, light:MONO.slateLt, type:'kg'},
+  {key:'sakuna',  name:'สกุณา',    color:MONO.slate, light:MONO.slateLt, type:'kg'},
+  {key:'jiab',    name:'เจี๊ยบ',   color:MONO.slate, light:MONO.slateLt, type:'kg'},
+  {key:'tom',     name:'ต้อม',     color:MONO.slate, light:MONO.slateLt, type:'kg'},
+  {key:'tip',     name:'ทิพย์',    color:MONO.slate, light:MONO.slateLt, type:'kg'},
+  {key:'chaum',   name:'ชะอำ',     color:MONO.slate, light:MONO.slateLt, type:'kg'},
+  {key:'pop',     name:'ภพ',       color:MONO.slate, light:MONO.slateLt, type:'kg'},
 ];
 
 let currentDate=todayStr();
@@ -345,6 +370,41 @@ function loadIntoInputs(){
   updateSummary();
 }
 
+// ══ AUDIT LOG ══
+function saveAuditLog(log){
+  set(ref(db,'auditlog'), log).catch(()=>{});
+}
+function renderAuditLog(log){
+  const list=document.getElementById('audit-list');
+  const empty=document.getElementById('audit-empty');
+  const entries=Object.values(log||{}).sort((a,b)=>b.ts-a.ts);
+  if(!entries.length){ list.innerHTML=''; list.appendChild(empty); empty.style.display='block'; return; }
+  empty.style.display='none';
+  list.innerHTML=entries.map(e=>{
+    const dt=new Date(e.ts);
+    const timeStr=dt.toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+    const tag=e.type==='new'
+      ? `<span class="audit-tag new">บันทึกใหม่</span>`
+      : `<span class="audit-tag edit">แก้ไข</span>`;
+    const changes=(e.changes||[]).map(ch=>`
+      <span class="audit-change">
+        ${ch.name}: <span class="before">${ch.before}</span><span class="after">${ch.after}</span>
+      </span>`).join('');
+    return `<div class="audit-item">
+      <div class="audit-top">
+        <span class="audit-time">${timeStr}</span>
+        <span class="audit-date">วันที่ ${thDate(e.date)}</span>
+        ${tag}
+      </div>
+      ${changes ? `<div class="audit-changes">${changes}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+window.clearAuditLog=function(){
+  if(!confirm('ล้างประวัติการแก้ไขทั้งหมด?')) return;
+  set(ref(db,'auditlog'),{}).then(()=>showToast('🗑️ ล้างประวัติแล้ว'));
+}
+
 window.saveEntry=function(){
   const entry={};let hasData=false;
   CUSTOMERS.forEach(c=>{
@@ -352,22 +412,51 @@ window.saveEntry=function(){
     else (c.fields||[]).forEach(f=>{const v=getNum(c.key+'_'+f.id);entry[c.key+'_'+f.id]=v;if(v)hasData=true;});
   });
   if(!hasData){showToast('⚠️ กรุณากรอกยอดอย่างน้อยหนึ่งรายการ');return;}
+  const isEdit=!!records[currentDate];
+
+  // build audit — only log edits where before!=0 and value changed
+  const prev=records[currentDate]||{};
+  const changes=[];
+  if(isEdit){
+    CUSTOMERS.forEach(c=>{
+      const getVal=(r)=>{
+        if(c.type==='kg') return r[c.key]||0;
+        if(c.type==='multi-kg') return (c.fields||[]).reduce((s,f)=>s+(r[c.key+'_'+f.id]||0),0);
+        return (c.fields||[]).reduce((s,f)=>s+(r[c.key+'_'+f.id]||0),0)*30;
+      };
+      const before=getVal(prev), after=getVal(entry);
+      if(before!==0 && before!==after)
+        changes.push({name:c.name, before:before.toFixed(1)+' กก.', after:after.toFixed(1)+' กก.'});
+    });
+    if(changes.length){
+      get(ref(db,'auditlog')).then(snap=>{
+        const log=snap.val()||{};
+        log[Date.now().toString()]={ts:Date.now(), date:currentDate, type:'edit', changes};
+        saveAuditLog(log);
+      });
+    }
+  }
+
   records[currentDate]=entry; saveWS();
-  showToast('✅ บันทึกวันที่ '+thDate(currentDate)+' เรียบร้อย');
+  showToast((isEdit?'✏️ แก้ไข':'✅ บันทึก')+' วันที่ '+thDate(currentDate)+' เรียบร้อย');
 }
 
-window.clearInputs=function(){
+function _clearInputsSilent(){
   CUSTOMERS.forEach(c=>{
     if(c.type==='kg'){const el=document.getElementById(c.key);if(el) el.value='';}
     else (c.fields||[]).forEach(f=>{const el=document.getElementById(c.key+'_'+f.id);if(el) el.value='';});
   });
   updateSummary();
 }
+window.clearInputs=function(){
+  if(!confirm('ล้างข้อมูลในช่องทั้งหมด?')) return;
+  _clearInputsSilent();
+}
 
 window.deleteEntry=function(date){
   if(!confirm('ลบข้อมูลวันที่ '+thDate(date)+' ?')) return;
   delete records[date]; saveWS();
-  if(date===currentDate) clearInputs();
+  if(date===currentDate) _clearInputsSilent();
   showToast('🗑️ ลบแล้ว');
 }
 
@@ -420,6 +509,7 @@ window.addRetailTxn=function(){
 }
 
 window.deleteRetailTxn=function(date,id){
+  if(!confirm('ลบรายการนี้?')) return;
   rtData[date]=(rtData[date]||[]).filter(t=>t.id!==id);
   if(!rtData[date].length) delete rtData[date];
   saveRT();
@@ -477,6 +567,11 @@ window.addEventListener('DOMContentLoaded',()=>{
   onValue(ref(db,'retail'), snap=>{
     rtData = snap.val()||{};
     renderRetail();
+  });
+
+  // listen audit log realtime
+  onValue(ref(db,'auditlog'), snap=>{
+    renderAuditLog(snap.val()||{});
   });
 });
 </script>
