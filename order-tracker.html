@@ -125,8 +125,9 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 
 /* ══ HISTORY TABLE ══ */
 .history-table-wrap{overflow-x:auto;}
-.history-scroll-wrap{max-height:280px;overflow-y:auto;overflow-x:auto;border:1px solid var(--rule);border-radius:10px;}
-.history-scroll-wrap thead th{position:sticky;top:0;background:var(--bg);z-index:1;}
+.history-scroll-wrap{max-height:280px;overflow-y:auto;overflow-x:auto;border:1px solid var(--rule);border-radius:10px;-webkit-overflow-scrolling:touch;}
+.history-scroll-wrap table{border-collapse:collapse;width:100%;}
+.history-scroll-wrap thead th{position:-webkit-sticky;position:sticky;top:0;background:var(--bg);z-index:1;box-shadow:0 1px 0 var(--rule);}
 table{width:100%;border-collapse:collapse;font-size:.74rem;}
 thead th{text-align:right;padding:.4rem .62rem;font-size:.58rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--rule);white-space:nowrap;}
 thead th:first-child{text-align:left;}
@@ -465,13 +466,24 @@ function renderAuditLog(log){
   entries.forEach(e=>{
     const dt=new Date(e.ts);
     const timeStr=dt.toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
-    const tag=e.type==='new'
-      ? `<span class="audit-tag new">บันทึกใหม่</span>`
-      : `<span class="audit-tag edit">แก้ไข</span>`;
-    const changes=(e.changes||[]).map(ch=>`
-      <span class="audit-change">
-        ${ch.name}: <span class="before">${ch.before}</span><span class="after">${ch.after}</span>
-      </span>`).join('');
+    // determine main tag
+    const allTypes=(e.changes||[]).map(ch=>ch.changeType||'edit');
+    const hasNew=allTypes.includes('new');
+    const hasDel=allTypes.includes('del');
+    const hasEdit=allTypes.includes('edit');
+    let tag;
+    if(e.type==='new') tag=`<span class="audit-tag new">บันทึกใหม่</span>`;
+    else if(hasDel && !hasNew && !hasEdit) tag=`<span class="audit-tag" style="background:#fdecea;color:#c0392b;padding:.1rem .4rem;border-radius:4px;font-weight:700;font-size:.6rem;">ลบ</span>`;
+    else if(hasNew && !hasDel && !hasEdit) tag=`<span class="audit-tag new">เพิ่มใหม่</span>`;
+    else tag=`<span class="audit-tag edit">แก้ไข</span>`;
+    const changes=(e.changes||[]).map(ch=>{
+      const ct=ch.changeType||'edit';
+      let label;
+      if(ct==='new') label=`<span class="after">${ch.after}</span>`;
+      else if(ct==='del') label=`<span class="before">${ch.before}</span>`;
+      else label=`<span class="before">${ch.before}</span><span class="after"> → ${ch.after}</span>`;
+      return `<span class="audit-change">${ch.name}: ${label}</span>`;
+    }).join('');
     const div=document.createElement('div');
     div.className='audit-item';
     div.innerHTML=`
@@ -512,8 +524,10 @@ window.saveEntry=function(){
         return (c.fields||[]).reduce((s,f)=>s+(r[c.key+'_'+f.id]||0),0)*30;
       };
       const before=getVal(prev), after=getVal(entry);
-      if(before!==0 && before!==after)
-        changes.push({name:c.name, before:fmtKg(before)+' กก.', after:fmtKg(after)+' กก.'});
+      if(before!==after){
+        const changeType = before===0 ? 'new' : after===0 ? 'del' : 'edit';
+        changes.push({name:c.name, before:fmtKg(before)+' กก.', after:fmtKg(after)+' กก.', changeType});
+      }
     });
     if(changes.length){
       get(ref(db,'auditlog')).then(snap=>{
