@@ -152,6 +152,12 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
 .audit-change .before{color:var(--muted);text-decoration:line-through;margin-right:.25rem;}
 .audit-change .after{font-weight:600;color:var(--slate, #3A5270);}
 
+@media print{
+  body>*{display:none!important;}
+  #bill-preview{display:block!important;position:static!important;overflow:visible!important;background:#fff;}
+  #bill-preview>div>div:first-child{display:none!important;}
+}
+
 /* ══ TOAST ══ */
 .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(60px);background:var(--ink);color:#fff;padding:.62rem 1.25rem;border-radius:9px;font-size:.8rem;transition:transform .3s,opacity .3s;opacity:0;pointer-events:none;z-index:999;white-space:nowrap;}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
@@ -225,6 +231,7 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
   <div class="save-bar" style="margin-top:.85rem;">
     <button class="btn btn-save" onclick="saveEntry()">💾 บันทึก</button>
     <button class="btn btn-clear" onclick="clearInputs()">ล้างข้อมูล</button>
+    <button class="btn" style="background:#2C3E55;color:#fff;" onclick="openBillModal()">🧾 ตั๋วตัดบัญชี</button>
   </div>
 
   <div class="section-label">ประวัติการส่ง</div>
@@ -244,8 +251,50 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
     </div>
   </div>
 
-</div>
-<div class="toast" id="toast"></div>
+  <!-- ══ BILL MODAL ══ -->
+  <div id="bill-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;overflow-y:auto;padding:1.5rem 1rem;">
+    <div style="background:#fff;border-radius:16px;max-width:480px;margin:0 auto;padding:1.4rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem;">
+        <span style="font-size:1rem;font-weight:700;">ตั๋วตัดบัญชี</span>
+        <button onclick="closeBillModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.7rem;">
+        <div>
+          <label style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">ลูกค้า</label>
+          <select id="bill-cust" style="width:100%;margin-top:.3rem;padding:.5rem .7rem;border:1.5px solid var(--rule);border-radius:8px;font-family:'Sarabun',sans-serif;font-size:.95rem;background:var(--bg);color:var(--ink);outline:none;"></select>
+        </div>
+        <div style="display:flex;gap:.7rem;">
+          <div style="flex:1;">
+            <label style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">จากวันที่</label>
+            <input type="date" id="bill-from" style="width:100%;margin-top:.3rem;padding:.5rem .7rem;border:1.5px solid var(--rule);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.85rem;background:var(--bg);color:var(--ink);outline:none;"/>
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">ถึงวันที่</label>
+            <input type="date" id="bill-to" style="width:100%;margin-top:.3rem;padding:.5rem .7rem;border:1.5px solid var(--rule);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.85rem;background:var(--bg);color:var(--ink);outline:none;"/>
+          </div>
+        </div>
+        <div style="display:none;">
+          <input type="number" id="bill-price" value="0"/>
+        </div>
+        <div>
+          <label style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">รายการสินค้า</label>
+          <input type="text" id="bill-item" placeholder="ทอดมัน" value="ทอดมัน" style="width:100%;margin-top:.3rem;padding:.5rem .7rem;border:1.5px solid var(--rule);border-radius:8px;font-family:'Sarabun',sans-serif;font-size:.95rem;background:var(--bg);color:var(--ink);outline:none;"/>
+        </div>
+        <button onclick="previewBill()" style="margin-top:.3rem;padding:.7rem;background:var(--accent);color:#fff;border:none;border-radius:9px;font-family:'Sarabun',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;">ดูตัวอย่าง / พิมพ์</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ BILL PRINT FRAME ══ -->
+  <div id="bill-preview" style="display:none;position:fixed;inset:0;background:#fff;z-index:300;overflow-y:auto;">
+    <div style="max-width:700px;margin:0 auto;padding:1.5rem;">
+      <div style="display:flex;gap:.7rem;margin-bottom:1rem;justify-content:flex-end;">
+        <button onclick="printBill()" style="padding:.55rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:'Sarabun',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;">🖨️ พิมพ์</button>
+        <button onclick="document.getElementById('bill-preview').style.display='none'" style="padding:.55rem 1.2rem;background:var(--paper);color:var(--muted);border:1px solid var(--rule);border-radius:8px;font-family:'Sarabun',sans-serif;font-size:.9rem;cursor:pointer;">✕ ปิด</button>
+      </div>
+      <div id="bill-content"></div>
+    </div>
+  </div>
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -589,7 +638,128 @@ function renderRetail(){
   });
 }
 
-// ══ INIT + REALTIME LISTENERS ══
+// ══ BILL FUNCTIONS ══
+const BILL_CUSTOMERS=[
+  {key:'jeed',    name:'เจ้จี้ด',   price:45},
+  {key:'pearn',   name:'เปิ้ล',     price:45},
+  {key:'raknong', name:'รักน้องพร', price:47},
+  {key:'dragon',  name:'ร.มังกร',   price:45},
+  {key:'muay',    name:'เจ้หมวย',   price:45},
+];
+
+window.openBillModal=function(){
+  const sel=document.getElementById('bill-cust');
+  sel.innerHTML=BILL_CUSTOMERS.map(c=>`<option value="${c.key}">${c.name} (${c.price} บ./กก.)</option>`).join('');
+  const today=todayStr();
+  const [y,m]=today.split('-');
+  document.getElementById('bill-from').value=`${y}-${m}-01`;
+  document.getElementById('bill-to').value=today;
+  document.getElementById('bill-modal').style.display='block';
+}
+window.closeBillModal=function(){
+  document.getElementById('bill-modal').style.display='none';
+}
+
+window.previewBill=function(){
+  const custKey=document.getElementById('bill-cust').value;
+  const from=document.getElementById('bill-from').value;
+  const to=document.getElementById('bill-to').value;
+  const itemName=document.getElementById('bill-item').value.trim()||'ทอดมัน';
+  if(!from||!to){showToast('⚠️ กรุณาเลือกช่วงวันที่');return;}
+  if(from>to){showToast('⚠️ วันที่เริ่มต้นต้องก่อนวันสิ้นสุด');return;}
+
+  const billCust=BILL_CUSTOMERS.find(c=>c.key===custKey);
+  const cust=CUSTOMERS.find(c=>c.key===custKey);
+  if(!billCust||!cust){showToast('⚠️ ไม่พบลูกค้า');return;}
+  const price=billCust.price;
+
+  function fmtDate(str){
+    if(!str) return '';
+    const [y,m,dd]=str.split('-');
+    return `${dd}/${m}/${y}`;
+  }
+
+  // collect rows
+  const rows=[];
+  let d=new Date(from);
+  const end=new Date(to);
+  while(d<=end){
+    const dateStr=d.toLocaleDateString('sv-SE');
+    const r=records[dateStr]||{};
+    const kg=custKg(cust,r);
+    rows.push({date:dateStr, kg, total:kg*price});
+    d.setDate(d.getDate()+1);
+  }
+
+  const totalKg=rows.reduce((s,r)=>s+r.kg,0);
+  const totalBaht=totalKg*price;
+
+  const rowsHTML=rows.map(r=>`
+    <tr>
+      <td style="padding:.45rem .7rem;border-bottom:1px solid #e0e0e0;text-align:center;">${fmtDate(r.date)}</td>
+      <td style="padding:.45rem .7rem;border-bottom:1px solid #e0e0e0;text-align:center;">${itemName}</td>
+      <td style="padding:.45rem .7rem;border-bottom:1px solid #e0e0e0;text-align:right;">${fmtKg(r.kg)}</td>
+      <td style="padding:.45rem .7rem;border-bottom:1px solid #e0e0e0;text-align:right;">${price}</td>
+      <td style="padding:.45rem .7rem;border-bottom:1px solid #e0e0e0;text-align:right;font-weight:${r.total>0?'700':'400'}">${r.total>0?r.total.toLocaleString():'0'}</td>
+    </tr>`).join('');
+
+  document.getElementById('bill-content').innerHTML=`
+    <div style="font-family:'Sarabun',sans-serif;color:#1E2A38;">
+      <div style="text-align:center;background:#2C3E55;color:#fff;padding:.35rem;border-radius:6px 6px 0 0;">
+        <h2 style="font-size:.95rem;font-weight:700;margin:0;">ตั๋วตัดบัญชี</h2>
+      </div>
+      <div style="border:1px solid #ccc;border-top:none;border-radius:0 0 6px 6px;padding:.5rem .8rem .7rem;">
+        <p style="font-size:.78rem;font-weight:700;margin:.2rem 0 .5rem;">Customer Name : <span style="color:#3A5270;">${cust.name}</span></p>
+        <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
+          <thead>
+            <tr style="background:#1E2A38;color:#fff;">
+              <th style="padding:.65rem .8rem;text-align:center;font-size:1rem;">วันที่</th>
+              <th style="padding:.65rem .8rem;text-align:center;font-size:1rem;">รายการ</th>
+              <th style="padding:.65rem .8rem;text-align:right;font-size:1rem;">จำนวน (กก.)</th>
+              <th style="padding:.65rem .8rem;text-align:right;font-size:1rem;">ราคา</th>
+              <th style="padding:.65rem .8rem;text-align:right;font-size:1rem;">รวม</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHTML}</tbody>
+        </table>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:1rem;border-top:2px solid #2C3E55;padding-top:.7rem;">
+          <span style="font-size:1.1rem;font-weight:700;">รวม</span>
+          <span style="font-size:1rem;font-weight:600;">${fmtKg(totalKg)} กก.</span>
+          <span style="font-size:1.4rem;font-weight:700;">${totalBaht.toLocaleString()} บาท</span>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('bill-modal').style.display='none';
+  document.getElementById('bill-preview').style.display='block';
+}
+window.printBill=function(){
+  const content=document.getElementById('bill-content').innerHTML;
+  const win=window.open('','_blank','width=700,height=900');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet"/>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{font-family:'Sarabun',sans-serif;color:#1E2A38;background:#fff;padding:1cm;}
+      @media print{
+        @page{size:A4 portrait;margin:1.5cm 2cm;}
+        *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+      }
+      div[style*="font-family"]{max-width:100%;}
+      div[style*="background:#2C3E55"],div[style*="background:#1E2A38"]{background:#1E2A38!important;color:#fff!important;border-radius:6px 6px 0 0;}
+      div[style*="background:#2C3E55"] h2{font-size:1.1rem!important;}
+      table{width:100%;border-collapse:collapse;font-size:.78rem;}
+      thead tr{background:#1E2A38!important;}
+      th{background:#1E2A38!important;color:#fff!important;padding:.4rem .55rem!important;font-size:.78rem!important;}
+      td{padding:.32rem .55rem!important;font-size:.75rem!important;border-bottom:1px solid #e0e0e0;}
+      p{font-size:.82rem!important;}
+    </style>
+  </head><body>${content}
+  <script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
 window.addEventListener('DOMContentLoaded',()=>{
   buildCards(); buildTableHead();
   document.getElementById('date-input').value=currentDate;
