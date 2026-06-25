@@ -125,6 +125,9 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 
 /* ══ HISTORY TABLE ══ */
 .history-table-wrap{overflow-x:auto;}
+.history-scroll-wrap{max-height:280px;overflow-y:auto;border:1px solid var(--rule);border-radius:10px;}
+.history-scroll-wrap table{border-radius:10px;overflow:hidden;}
+.history-scroll-wrap thead th{position:sticky;top:0;background:var(--bg);z-index:1;}
 table{width:100%;border-collapse:collapse;font-size:.74rem;}
 thead th{text-align:right;padding:.4rem .62rem;font-size:.58rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--rule);white-space:nowrap;}
 thead th:first-child{text-align:left;}
@@ -236,7 +239,9 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
 
   <div class="section-label">ประวัติการส่ง</div>
   <div class="history-table-wrap">
-    <table><thead id="tbl-head"></thead><tbody id="history-body"></tbody></table>
+    <div class="history-scroll-wrap">
+      <table><thead id="tbl-head"></thead><tbody id="history-body"></tbody></table>
+    </div>
     <div class="empty" id="empty-msg">ยังไม่มีข้อมูล — กรอกแล้วกด บันทึก</div>
   </div>
 
