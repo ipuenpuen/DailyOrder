@@ -686,7 +686,8 @@ window.previewBill=function(){
   while(d<=end){
     const dateStr=d.toLocaleDateString('sv-SE');
     const r=records[dateStr]||{};
-    const kg=custKg(cust,r);
+    // เปิ้ล ดึงเฉพาะสะพานปลา
+    const kg = custKey==='pearn' ? (r['pearn_sapan']||0) : custKg(cust,r);
     rows.push({date:dateStr, kg, total:kg*price});
     d.setDate(d.getDate()+1);
   }
