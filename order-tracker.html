@@ -498,8 +498,8 @@ window.saveEntry=function(){
     if(c.type==='kg'){const v=getNum(c.key);entry[c.key]=v;if(v)hasData=true;}
     else (c.fields||[]).forEach(f=>{const v=getNum(c.key+'_'+f.id);entry[c.key+'_'+f.id]=v;if(v)hasData=true;});
   });
-  if(!hasData){showToast('⚠️ กรุณากรอกยอดอย่างน้อยหนึ่งรายการ');return;}
   const isEdit=!!records[currentDate];
+  if(!hasData && !isEdit){showToast('⚠️ กรุณากรอกยอดอย่างน้อยหนึ่งรายการ');return;}
 
   // build audit — only log edits where before!=0 and value changed
   const prev=records[currentDate]||{};
