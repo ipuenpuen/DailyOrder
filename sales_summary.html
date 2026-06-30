@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สรุปยอดขายทอดมัน 2569</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:       #F5F4EF;
+    --surface:  #FFFFFF;
+    --indigo:   #1E2A4A;
+    --amber:    #E8A020;
+    --amber-lt: #FFF3D6;
+    --sage:     #4A7C59;
+    --blue:     #2E6FA3;
+    --blue-lt:  #E8F2FA;
+    --red:      #C0392B;
+    --muted:    #6B7280;
+    --border:   #D9D5C8;
+  }
+  body {
+    font-family: 'Sarabun', sans-serif;
+    background: var(--bg);
+    color: #1A1A1A;
+    min-height: 100vh;
+    padding: 20px 16px 60px;
+  }
+
+  /* HEADER */
+  .page-header { text-align: center; margin-bottom: 14px; }
+  .month-badge {
+    display: inline-block; background: var(--indigo); color: #fff;
+    font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    padding: 3px 14px; border-radius: 20px; margin-bottom: 6px;
+  }
+  .page-header h1 { font-size: clamp(20px,5vw,28px); font-weight: 800; color: var(--indigo); }
+  .page-header h1 span { color: var(--amber); }
+
+  /* SYNC STATUS */
+  .sync-wrap { text-align: center; margin-bottom: 10px; }
+  .sync-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px;
+    background: var(--surface); color: var(--muted); box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #ccc; transition: background .2s; }
+  .sync-pill.ok .sync-dot { background: var(--sage); }
+  .sync-pill.busy .sync-dot { background: var(--amber); animation: pulse 1s infinite; }
+  .sync-pill.err .sync-dot { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+  /* MONTH SELECTOR */
+  .month-selector {
+    display: flex; justify-content: center; align-items: center;
+    gap: 10px; margin-bottom: 16px;
+  }
+  .month-btn {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: 10px; padding: 6px 16px;
+    font-family: 'Sarabun', sans-serif; font-size: 20px; font-weight: 700;
+    color: var(--indigo); cursor: pointer; transition: background .15s, border-color .15s;
+  }
+  .month-btn:hover { background: var(--amber-lt); border-color: var(--amber); }
+  .month-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .month-label-display { font-size: 18px; font-weight: 800; color: var(--indigo); min-width: 200px; text-align: center; }
+
+  .hint-wrap { text-align: center; margin-bottom: 16px; }
+  .hint {
+    display: inline-block; font-size: 11px; color: var(--muted);
+    background: var(--surface); border-radius: 8px; padding: 6px 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+  }
+
+  /* GRID */
+  .main-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; align-items: start; }
+
+  /* PANEL */
+  .panel { background: var(--surface); border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,.09); width: 431px; flex-shrink: 0; max-width: 100%; }
+  .panel-head { padding: 12px 16px 10px; border-bottom: 2px solid var(--border); text-align: center; }
+  .panel-head.amber { background: var(--amber-lt); }
+  .panel-head.blue  { background: var(--blue-lt);  }
+  .panel-head h2 { font-size: 17px; font-weight: 800; color: var(--indigo); }
+  .panel-head .rule { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    background: var(--indigo); color: #fff; font-weight: 700;
+    padding: 9px 6px; text-align: center; font-size: 14px;
+  }
+  tbody tr { border-bottom: 1px solid #F0EDE6; }
+  tbody tr:last-child { border-bottom: none; }
+
+  tr.day-sun .day-cell { background: #FEF3C7; color: #92400E; font-weight: 700; }
+  tr.day-sat .day-cell { background: #EDE9FE; color: #5B21B6; font-weight: 700; }
+
+  td { padding: 6px 6px; text-align: center; vertical-align: top; }
+  .day-cell  { font-size: 14px; font-weight: 600; color: var(--muted); width: 30px; vertical-align: middle; }
+  .date-cell { font-weight: 800; color: var(--indigo); font-size: 20px; width: 30px; vertical-align: middle; }
+  .total-cell { font-weight: 800; color: var(--indigo); font-size: 19px; width: 58px; vertical-align: middle; }
+  .hiw-cell  { font-weight: 700; color: var(--red); font-size: 19px; width: 58px; vertical-align: middle; }
+
+  /* ENTRIES CELL */
+  .entries-cell { text-align: left; padding: 5px 4px; }
+  .entries-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; min-height: 28px; }
+  .entry-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: #F0EDE6; border-radius: 6px; padding: 2px 6px 2px 8px;
+    font-size: 14px; font-weight: 700; color: var(--indigo);
+  }
+  .entry-chip .del-btn {
+    font-size: 13px; color: #aaa; cursor: pointer; line-height: 1;
+    background: none; border: none; padding: 0 0 0 2px; font-family: sans-serif;
+  }
+  .entry-chip .del-btn:hover { color: var(--red); }
+
+  .add-row { display: flex; gap: 4px; align-items: center; }
+  .entry-input {
+    width: 72px; border: 1.5px solid var(--border); border-radius: 7px;
+    padding: 4px 6px; font-family: 'Sarabun', sans-serif; font-size: 15px;
+    font-weight: 700; text-align: center; color: var(--indigo);
+    background: #FAFAF7; outline: none; transition: border-color .15s;
+  }
+  .entry-input:focus { border-color: var(--amber); background: #fff; }
+  .entry-input:disabled { opacity: .5; }
+  .add-btn {
+    background: var(--indigo); color: #fff; border: none; border-radius: 7px;
+    padding: 4px 10px; font-size: 16px; cursor: pointer; font-weight: 700;
+    transition: background .15s;
+  }
+  .add-btn:hover { background: var(--blue); }
+  .add-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* SUMMARY */
+  .summary-bar { border-top: 2px solid var(--border); padding: 12px 14px; background: #F8F7F3; }
+  .summary-bar h3 {
+    font-size: 11px; font-weight: 700; color: var(--muted);
+    letter-spacing: .08em; text-transform: uppercase; margin-bottom: 10px; text-align: center;
+  }
+  .summary-items { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; text-align: center; }
+  .sum-label { font-size: 13px; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+  .sum-val   { font-size: 32px; font-weight: 800; color: var(--indigo); line-height: 1; }
+  .sum-val.amber { color: var(--amber); }
+  .sum-val.sage  { color: var(--sage);  }
+  .sum-val.blue  { color: var(--blue);  }
+  .sum-unit  { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+  .page-footer { text-align: center; font-size: 10px; color: var(--muted); margin-top: 16px; }
+  .reset-wrap { text-align: center; margin-top: 18px; }
+  .reset-btn {
+    font-family: 'Sarabun', sans-serif; font-size: 11px; color: var(--muted);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 5px 12px; cursor: pointer;
+  }
+  .reset-btn:hover { color: var(--red); border-color: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="month-badge">บันทึกการขาย (ใช้ร่วมกัน)</div>
+  <h1>🥟 ทอดมัน <span id="title-year">2569</span></h1>
+</div>
+
+<div class="sync-wrap">
+  <span class="sync-pill" id="sync-pill"><span class="sync-dot"></span><span id="sync-text">กำลังโหลดข้อมูล…</span></span>
+</div>
+
+<div class="month-selector">
+  <button class="month-btn" id="prev-btn">&#8592;</button>
+  <div class="month-label-display" id="month-display">มิถุนายน 2569</div>
+  <button class="month-btn" id="next-btn">&#8594;</button>
+</div>
+
+<div class="hint-wrap">
+  <div class="hint">✏️ กรอกแพคแล้วกด <strong>+</strong> เพิ่มได้หลายรายการต่อวัน — ข้อมูลนี้ใช้ร่วมกันทุกคน อัปเดตอัตโนมัติ</div>
+</div>
+
+<div class="main-grid">
+  <!-- 500g -->
+  <div class="panel">
+    <div class="panel-head amber">
+      <h2>🥟 ทอดมัน 500 g</h2>
+      <div class="rule">16 แพค = 1 หิ้ว = 8 kg</div>
+    </div>
+    <table>
+      <thead><tr><th>วัน</th><th>ที่</th><th>รายการแพค</th><th>รวม</th><th>หิ้ว</th></tr></thead>
+      <tbody id="body500"></tbody>
+    </table>
+    <div class="summary-bar">
+      <h3>สรุปยอด 500 g</h3>
+      <div class="summary-items">
+        <div><div class="sum-label">รวมแพค</div><div class="sum-val amber" id="s500pkg">0</div><div class="sum-unit">แพค</div></div>
+        <div><div class="sum-label">รวมหิ้ว</div><div class="sum-val sage" id="s500hub">0</div><div class="sum-unit">หิ้ว</div></div>
+        <div><div class="sum-label">รวม kg</div><div class="sum-val" id="s500kg">0</div><div class="sum-unit">กิโลกรัม</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 250g -->
+  <div class="panel">
+    <div class="panel-head blue">
+      <h2>🥟 ทอดมัน 250 g</h2>
+      <div class="rule">20 แพค = 1 หิ้ว = 5 kg</div>
+    </div>
+    <table>
+      <thead><tr><th>วัน</th><th>ที่</th><th>รายการแพค</th><th>รวม</th><th>หิ้ว</th></tr></thead>
+      <tbody id="body250"></tbody>
+    </table>
+    <div class="summary-bar">
+      <h3>สรุปยอด 250 g</h3>
+      <div class="summary-items">
+        <div><div class="sum-label">รวมแพค</div><div class="sum-val amber" id="s250pkg">0</div><div class="sum-unit">แพค</div></div>
+        <div><div class="sum-label">รวมหิ้ว</div><div class="sum-val blue" id="s250hub">0</div><div class="sum-unit">หิ้ว</div></div>
+        <div><div class="sum-label">รวม kg</div><div class="sum-val" id="s250kg">0</div><div class="sum-unit">กิโลกรัม</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="reset-wrap">
+  <button class="reset-btn" id="reset-btn">ล้างข้อมูลเดือนนี้ทั้งหมด</button>
+</div>
+
+<div class="page-footer" id="footer-txt">ระบบสรุปยอดขายทอดมัน (ข้อมูลใช้ร่วมกันทุกคน) · มิถุนายน พ.ศ. 2569</div>
+
+<script>
+const DAY_NAMES   = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+const MONTH_NAMES = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const RULES = {
+  '500': { pkgPerHiw: 16, kgPerHiw: 8 },
+  '250': { pkgPerHiw: 20, kgPerHiw: 5 }
+};
+const STORAGE_KEY = 'sales-data-v1'; // shared key, contains ALL months/years
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDqHm9vc634GjH1hfOYGZainhqZyUndBQY",
+  authDomain: "ordertum.firebaseapp.com",
+  databaseURL: "https://ordertum-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ordertum",
+  storageBucket: "ordertum.firebasestorage.app",
+  messagingSenderId: "185402995637",
+  appId: "1:185402995637:web:ca66361e065e5e38aadffc",
+  measurementId: "G-TV4VMET949"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const dbRef = db.ref(STORAGE_KEY);
+let suppressNextSnapshot = false;
+
+let currentYear  = 2026;
+let currentMonth = 5;
+
+// data[type][ "YYYY-M-D" ] = [val, val, ...]
+let data = { '500': {}, '250': {} };
+
+function setSync(state, text) {
+  const pill = document.getElementById('sync-pill');
+  pill.className = 'sync-pill ' + state;
+  document.getElementById('sync-text').textContent = text;
+}
+
+function setControlsEnabled(enabled) {
+  document.querySelectorAll('.entry-input, .add-btn, .month-btn, #reset-btn').forEach(el => {
+    el.disabled = !enabled;
+  });
+}
+
+async function loadData() {
+  setSync('busy', 'กำลังโหลดข้อมูล…');
+  try {
+    const snap = await dbRef.once('value');
+    const val = snap.val();
+    if (val) {
+      data = { '500': val['500'] || {}, '250': val['250'] || {} };
+    } else {
+      data = { '500': {}, '250': {} };
+    }
+    setSync('ok', 'ซิงค์แล้ว · ข้อมูลใช้ร่วมกัน (Firebase)');
+  } catch (e) {
+    data = { '500': {}, '250': {} };
+    setSync('err', 'เชื่อมต่อ Firebase ไม่ได้');
+  }
+}
+
+async function saveData() {
+  setSync('busy', 'กำลังบันทึก…');
+  setControlsEnabled(false);
+  try {
+    suppressNextSnapshot = true;
+    await dbRef.set(data);
+    setSync('ok', 'ซิงค์แล้ว · ข้อมูลใช้ร่วมกัน (Firebase)');
+  } catch (e) {
+    setSync('err', 'บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
+  } finally {
+    setControlsEnabled(true);
+  }
+}
+
+function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+function beYear(y) { return y + 543; }
+
+function updateHeader() {
+  const be = beYear(currentYear);
+  const mn = MONTH_NAMES[currentMonth];
+  document.getElementById('month-display').textContent = `${mn} ${be}`;
+  document.getElementById('title-year').textContent = be;
+  document.getElementById('footer-txt').textContent = `ระบบสรุปยอดขายทอดมัน (ข้อมูลใช้ร่วมกันทุกคน) · ${mn} พ.ศ. ${be}`;
+}
+
+function dayKey(d) { return `${currentYear}-${currentMonth}-${d}`; }
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+// normalize entries: รองรับทั้งของเก่า (เลขล้วน) และของใหม่ ({id, val})
+function getEntries(type, d) {
+  const list = data[type][dayKey(d)] || [];
+  return list.map(e => (typeof e === 'object' && e !== null) ? e : { id: genId(), val: e });
+}
+
+async function addEntry(type, d, val) {
+  const k = dayKey(d);
+  if (!data[type][k]) data[type][k] = [];
+  data[type][k].push({ id: genId(), val });
+  renderRow(type, d);
+  await saveData();
+}
+
+async function removeEntry(type, d, entryId) {
+  const k = dayKey(d);
+  if (data[type][k]) {
+    const normalized = getEntries(type, d);
+    data[type][k] = normalized.filter(e => e.id !== entryId);
+  }
+  renderRow(type, d);
+  await saveData();
+}
+
+function dayTotal(type, d) {
+  return getEntries(type, d).reduce((s, e) => s + e.val, 0);
+}
+
+function renderRow(type, d) {
+  const { pkgPerHiw } = RULES[type];
+  const entries = getEntries(type, d);
+  const total   = entries.reduce((s, e) => s + e.val, 0);
+  const hiw     = total > 0 ? Math.round(total / pkgPerHiw).toLocaleString() : '–';
+
+  const chipsHtml = entries.map(e =>
+    `<span class="entry-chip">${e.val.toLocaleString()}<button class="del-btn" data-type="${type}" data-day="${d}" data-id="${e.id}">×</button></span>`
+  ).join('');
+
+  const totalHtml = total > 0 ? total.toLocaleString() : '–';
+
+  const rowEl = document.getElementById(`row-${type}-${d}`);
+  if (!rowEl) return;
+  rowEl.querySelector('.entries-list').innerHTML = chipsHtml;
+  rowEl.querySelector('.total-cell').textContent = totalHtml;
+  rowEl.querySelector('.hiw-cell').textContent   = hiw;
+
+  recalc(type);
+}
+
+function buildTable(tbodyId, type) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = '';
+  const days = daysInMonth(currentYear, currentMonth);
+
+  for (let d = 1; d <= days; d++) {
+    const date = new Date(currentYear, currentMonth, d);
+    const dow  = date.getDay();
+    const tr   = document.createElement('tr');
+    tr.id = `row-${type}-${d}`;
+    if (dow === 0) tr.classList.add('day-sun');
+    if (dow === 6) tr.classList.add('day-sat');
+    tr.innerHTML = `
+      <td class="day-cell">${DAY_NAMES[dow]}</td>
+      <td class="date-cell">${d}</td>
+      <td class="entries-cell">
+        <div class="entries-list"></div>
+        <div class="add-row">
+          <input type="number" min="1" class="entry-input" placeholder="แพค" data-type="${type}" data-day="${d}">
+          <button class="add-btn" data-type="${type}" data-day="${d}">+</button>
+        </div>
+      </td>
+      <td class="total-cell">–</td>
+      <td class="hiw-cell">–</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  // Add button click
+  tbody.querySelectorAll('.add-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const t = btn.dataset.type;
+      const d = parseInt(btn.dataset.day);
+      const inp = btn.previousElementSibling;
+      const val = parseFloat(inp.value);
+      if (!val || val <= 0) return;
+      inp.value = '';
+      await addEntry(t, d, val);
+      inp.focus();
+    });
+  });
+
+  // Enter key on input
+  tbody.querySelectorAll('.entry-input').forEach(inp => {
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        inp.nextElementSibling.click();
+      }
+    });
+  });
+
+  // Delete chip (delegated)
+  tbody.addEventListener('click', async e => {
+    const btn = e.target.closest('.del-btn');
+    if (!btn) return;
+    const t  = btn.dataset.type;
+    const d  = parseInt(btn.dataset.day);
+    const id = btn.dataset.id;
+    await removeEntry(t, d, id);
+  });
+
+  // แสดงข้อมูลเดิม (ถ้ามี) ของทุกวันทันทีหลังสร้างตาราง
+  for (let d = 1; d <= days; d++) {
+    renderRow(type, d);
+  }
+}
+
+function recalc(type) {
+  const { pkgPerHiw, kgPerHiw } = RULES[type];
+  const days = daysInMonth(currentYear, currentMonth);
+  let total = 0;
+  for (let d = 1; d <= days; d++) total += dayTotal(type, d);
+  const hiw = total / pkgPerHiw;
+  const kg  = hiw * kgPerHiw;
+  document.getElementById(`s${type}pkg`).textContent = total.toLocaleString();
+  document.getElementById(`s${type}hub`).textContent = Math.round(hiw).toLocaleString();
+  document.getElementById(`s${type}kg`).textContent  = Math.round(kg).toLocaleString();
+}
+
+function renderAll() {
+  updateHeader();
+  buildTable('body500', '500');
+  buildTable('body250', '250');
+}
+
+document.getElementById('prev-btn').addEventListener('click', async () => {
+  currentMonth--;
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  renderAll();
+});
+document.getElementById('next-btn').addEventListener('click', async () => {
+  currentMonth++;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  renderAll();
+});
+
+document.getElementById('reset-btn').addEventListener('click', async () => {
+  if (!confirm('ต้องการล้างข้อมูลทั้งหมดของเดือนนี้ (ทั้ง 500g และ 250g) ใช่หรือไม่? การกระทำนี้มีผลกับทุกคน')) return;
+  const days = daysInMonth(currentYear, currentMonth);
+  for (let d = 1; d <= days; d++) {
+    delete data['500'][dayKey(d)];
+    delete data['250'][dayKey(d)];
+  }
+  renderAll();
+  await saveData();
+});
+
+// Initial load
+(async () => {
+  setControlsEnabled(false);
+  await loadData();
+  renderAll();
+  setControlsEnabled(true);
+})();
+
+// Realtime listener: อัปเดตทันทีเมื่อมีคนอื่นแก้ไขข้อมูล
+dbRef.on('value', (snap) => {
+  if (suppressNextSnapshot) { suppressNextSnapshot = false; return; }
+  const val = snap.val();
+  data = { '500': (val && val['500']) || {}, '250': (val && val['250']) || {} };
+  renderAll();
+  setSync('ok', 'ซิงค์แล้ว · ข้อมูลใช้ร่วมกัน (Firebase)');
+});
+</script>
+</body>
+</html>
