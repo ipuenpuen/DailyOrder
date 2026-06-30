@@ -288,6 +288,7 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
               <th style="position:sticky;top:0;background:var(--bg);padding:.5rem .7rem;text-align:left;font-size:.65rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--rule);">เดือน</th>
               <th style="position:sticky;top:0;background:var(--bg);padding:.5rem .7rem;text-align:right;font-size:.65rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--rule);">ยอดส่ง (กก.)</th>
               <th style="position:sticky;top:0;background:var(--bg);padding:.5rem .7rem;text-align:right;font-size:.65rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--rule);">ยอดปลีก (กก.)</th>
+              <th style="position:sticky;top:0;background:var(--bg);padding:.5rem .7rem;text-align:right;font-size:.65rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--rule);">ยอดตั้ม (กก.)</th>
               <th style="position:sticky;top:0;background:var(--bg);padding:.5rem .7rem;text-align:right;font-size:.65rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--rule);">รวม (กก.)</th>
             </tr>
           </thead>
@@ -394,6 +395,43 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+
+// ══ FIREBASE #2: ยอดตั้ม (tum) — separate project ══
+const tumFirebaseConfig = {
+  apiKey: "AIzaSyDqHm9vc634GjH1hfOYGZainhqZyUndBQY",
+  authDomain: "ordertum.firebaseapp.com",
+  databaseURL: "https://ordertum-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ordertum",
+  storageBucket: "ordertum.firebasestorage.app",
+  messagingSenderId: "185402995637",
+  appId: "1:185402995637:web:ca66361e065e5e38aadffc"
+};
+const tumApp = initializeApp(tumFirebaseConfig, 'tumApp');
+const tumDb = getDatabase(tumApp);
+let tumData = { '500': {}, '250': {} };
+const TUM_RULES = { '500': { pkgPerHiw: 16, kgPerHiw: 8 }, '250': { pkgPerHiw: 20, kgPerHiw: 5 } };
+
+function tumKgForMonth(gy, monthIdx){
+  // key format used in sales_summary.html: `${year}-${month0based}-${day}`
+  let totalKg=0;
+  ['500','250'].forEach(type=>{
+    const rule=TUM_RULES[type];
+    const dayMap=tumData[type]||{};
+    Object.keys(dayMap).forEach(key=>{
+      const parts=key.split('-'); // year-month-day
+      if(parseInt(parts[0])===gy && parseInt(parts[1])===monthIdx){
+        const entries=dayMap[key]||[];
+        const pkgTotal=entries.reduce((s,e)=>{
+          const val=(typeof e==='object'&&e!==null)?e.val:e;
+          return s+(val||0);
+        },0);
+        const hiw=pkgTotal/rule.pkgPerHiw;
+        totalKg += hiw*rule.kgPerHiw;
+      }
+    });
+  });
+  return totalKg;
+}
 
 // ══ HELPERS ══
 function todayStr(){ return new Date().toLocaleDateString('sv-SE'); }
@@ -881,7 +919,7 @@ function renderSummary(){
   const wsCusts=CUSTOMERS.filter(c=>!RETAIL_CUSTOMERS.has(c.key));
   const extraCusts=CUSTOMERS.filter(c=>RETAIL_CUSTOMERS.has(c.key));
 
-  let yearWs=0, yearRt=0;
+  let yearWs=0, yearRt=0, yearTum=0;
   const rowsHTML=monthNames.map((mName,idx)=>{
     const mm=String(idx+1).padStart(2,'0');
     const prefix=`${gy}-${mm}-`;
@@ -904,21 +942,24 @@ function renderSummary(){
       extraCusts.forEach(c=>{ rtTotal+=custKg(c,r); });
     });
 
-    yearWs+=wsTotal; yearRt+=rtTotal;
-    const monthGrand=wsTotal+rtTotal;
+    const tumTotal=tumKgForMonth(gy, idx);
+
+    yearWs+=wsTotal; yearRt+=rtTotal; yearTum+=tumTotal;
+    const monthGrand=wsTotal+rtTotal+tumTotal;
     const hasData=monthGrand>0;
     return `<tr style="${hasData?'':'opacity:.4;'}">
       <td style="padding:.45rem .7rem;border-bottom:1px solid var(--rule);">${mName}</td>
       <td style="padding:.45rem .7rem;border-bottom:1px solid var(--rule);text-align:right;font-family:'JetBrains Mono',monospace;">${fmtKg(wsTotal)}</td>
       <td style="padding:.45rem .7rem;border-bottom:1px solid var(--rule);text-align:right;font-family:'JetBrains Mono',monospace;">${fmtKg(rtTotal)}</td>
+      <td style="padding:.45rem .7rem;border-bottom:1px solid var(--rule);text-align:right;font-family:'JetBrains Mono',monospace;">${fmtKg(tumTotal)}</td>
       <td style="padding:.45rem .7rem;border-bottom:1px solid var(--rule);text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;">${fmtKg(monthGrand)}</td>
     </tr>`;
   }).join('');
 
   document.getElementById('summary-body').innerHTML=rowsHTML;
-  const yearGrand=yearWs+yearRt;
+  const yearGrand=yearWs+yearRt+yearTum;
   document.getElementById('summary-year-total').textContent=fmtKg(yearGrand);
-  document.getElementById('summary-year-breakdown').textContent=`ส่ง ${fmtKg(yearWs)} + ปลีก ${fmtKg(yearRt)}`;
+  document.getElementById('summary-year-breakdown').textContent=`ส่ง ${fmtKg(yearWs)} + ปลีก ${fmtKg(yearRt)} + ตั้ม ${fmtKg(yearTum)}`;
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
@@ -946,6 +987,13 @@ window.addEventListener('DOMContentLoaded',()=>{
   // listen audit log realtime
   onValue(ref(db,'auditlog'), snap=>{
     renderAuditLog(snap.val()||{});
+  });
+
+  // listen tum (sales_summary) data realtime
+  onValue(ref(tumDb,'sales-data-v1'), snap=>{
+    const val=snap.val();
+    tumData = { '500': (val&&val['500'])||{}, '250': (val&&val['250'])||{} };
+    if(document.getElementById('summary-modal').style.display==='block') renderSummary();
   });
 });
 </script>
