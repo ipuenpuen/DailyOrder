@@ -516,7 +516,11 @@ function buildCards(){
     if(c.type==='kg'){
       b=`<div class="row"><label>${c.name}</label><input class="num-input" type="number" id="${c.key}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>`;
     } else if(c.type==='multi-kg'){
-      b=(c.fields||[]).map(f=>`<div class="row"><label>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>`).join('');
+      b=(c.fields||[]).map(f=>{
+        const hasPaid = c.key==='muay' && f.id==='other';
+        const paidChk = hasPaid ? `<div style="display:flex;justify-content:flex-end;margin-top:.3rem;margin-bottom:.2rem;"><label style="display:flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" id="muay_other_paid" onchange="updateSummary()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);"/> จ่ายแล้ว</label></div>` : '';
+        return `<div class="row"><label>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>${paidChk}`;
+      }).join('');
     } else {
       const unitLabel=c.unit||'ถัง';
       b=(c.fields||[]).map(f=>`<div class="row"><label><span class="dot" style="background:${f.dot}"></span>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">${unitLabel}</span></div>`).join('')
@@ -570,6 +574,9 @@ function loadIntoInputs(){
     if(c.type==='kg'){const el=document.getElementById(c.key);if(el) el.value=r[c.key]!=null?r[c.key]:'';}
     else (c.fields||[]).forEach(f=>{const el=document.getElementById(c.key+'_'+f.id);if(el) el.value=r[c.key+'_'+f.id]!=null?r[c.key+'_'+f.id]:'';});
   });
+  // restore muay other paid checkbox
+  const chk=document.getElementById('muay_other_paid');
+  if(chk) chk.checked=!!(r['muay_other_paid']);
   updateSummary();
 }
 
@@ -631,6 +638,9 @@ window.saveEntry=function(){
     if(c.type==='kg'){const v=getNum(c.key);entry[c.key]=v;if(v)hasData=true;}
     else (c.fields||[]).forEach(f=>{const v=getNum(c.key+'_'+f.id);entry[c.key+'_'+f.id]=v;if(v)hasData=true;});
   });
+  // save muay other paid state
+  const chk=document.getElementById('muay_other_paid');
+  if(chk) entry['muay_other_paid']=chk.checked;
   const isEdit=!!records[currentDate];
   if(!hasData && !isEdit){showToast('⚠️ กรุณากรอกยอดอย่างน้อยหนึ่งรายการ');return;}
 
@@ -826,7 +836,14 @@ window.previewBill=function(){
     const dateStr=d.toLocaleDateString('sv-SE');
     const r=records[dateStr]||{};
     // เปิ้ล ดึงเฉพาะสะพานปลา
-    const kg = custKey==='pearn' ? (r['pearn_sapan']||0) : custKg(cust,r);
+    // เจ้หมวย: รวมอื่นๆ ถ้ายังไม่ได้จ่าย
+    let kg;
+    if(custKey==='pearn') kg=r['pearn_sapan']||0;
+    else if(custKey==='muay'){
+      const ole=r['muay_ole']||0;
+      const other=r['muay_other_paid'] ? 0 : (r['muay_other']||0);
+      kg=ole+other;
+    } else kg=custKg(cust,r);
     rows.push({date:dateStr, kg, total:kg*price});
     d.setDate(d.getDate()+1);
   }
