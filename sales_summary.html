@@ -253,8 +253,20 @@ const db = firebase.database();
 const dbRef = db.ref(STORAGE_KEY);
 let suppressNextSnapshot = false;
 
-let currentYear  = 2026;
-let currentMonth = 5;
+let currentYear, currentMonth;
+// default to current month, or use hash from parent tab
+(function(){
+  const hash=location.hash.replace('#','');
+  const parts=hash.split('-');
+  const now=new Date();
+  if(parts.length===2 && !isNaN(parseInt(parts[0]))){
+    currentYear=parseInt(parts[0]);
+    currentMonth=parseInt(parts[1]);
+  } else {
+    currentYear=now.getFullYear();
+    currentMonth=now.getMonth();
+  }
+})();
 
 // data[type][ "YYYY-M-D" ] = [val, val, ...]
 let data = { '500': {}, '250': {} };
