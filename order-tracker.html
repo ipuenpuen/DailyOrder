@@ -375,10 +375,13 @@ window.switchMainTab=function(tab){
     order.style.display='none'; tum.style.display='block';
     btnTum.style.color='var(--accent)'; btnTum.style.borderBottomColor='var(--accent)';
     btnOrder.style.color='var(--muted)'; btnOrder.style.borderBottomColor='transparent';
-    // reset iframe to current month via postMessage or reload with hash
+    // send current month to iframe via postMessage
     const iframe=document.querySelector('#maintab-page-tum iframe');
     const now=new Date();
-    iframe.src=`sales_summary.html#${now.getFullYear()}-${now.getMonth()}`;
+    const msg={type:'SET_MONTH', year:now.getFullYear(), month:now.getMonth()};
+    // if already loaded, send immediately; also send on load in case not ready
+    try{ iframe.contentWindow.postMessage(msg,'*'); }catch(e){}
+    iframe.onload=()=>{ iframe.contentWindow.postMessage(msg,'*'); iframe.onload=null; };
   }
 }
 </script>
