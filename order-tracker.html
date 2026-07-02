@@ -393,6 +393,8 @@ window.switchMainTab=function(tab){
   } else {
     ledger.style.display='block';
     btnLedger.style.color='var(--accent)'; btnLedger.style.borderBottomColor='var(--accent)';
+    const lframe=document.getElementById('ledger-iframe');
+    lframe.src='ledger.html?t='+Date.now();
   }
 }
 </script>
