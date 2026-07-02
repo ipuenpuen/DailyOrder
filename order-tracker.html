@@ -176,6 +176,7 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
   <div style="max-width:960px;margin:0 auto;display:flex;">
     <button id="maintab-order" onclick="switchMainTab('order')" style="flex:1;padding:.7rem .5rem;border:none;background:none;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;color:var(--accent);cursor:pointer;border-bottom:2.5px solid var(--accent);">🥟 ยอดทอดมันรายวัน</button>
     <button id="maintab-tum" onclick="switchMainTab('tum')" style="flex:1;padding:.7rem .5rem;border:none;background:none;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;">📊 ยอดทอดมันตั้ม</button>
+    <button id="maintab-ledger" onclick="switchMainTab('ledger')" style="flex:1;padding:.7rem .5rem;border:none;background:none;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;">📒 บัญชีรายรับ-จ่าย</button>
   </div>
 </div>
 
@@ -356,7 +357,11 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
 </div><!-- /maintab-page-order -->
 
 <div id="maintab-page-tum" style="display:none;height:calc(100vh - 48px);">
-  <iframe src="sales_summary.html" title="ยอดขายทอดมัน" style="width:100%;height:100%;border:none;display:block;"></iframe>
+  <iframe src="sales_summary.html" title="ยอดทอดมันตั้ม" style="width:100%;height:100%;border:none;display:block;"></iframe>
+</div>
+
+<div id="maintab-page-ledger" style="display:none;height:calc(100vh - 48px);">
+  <iframe id="ledger-iframe" src="ledger.html" title="บัญชีรายรับ-รายจ่าย" style="width:100%;height:100%;border:none;display:block;"></iframe>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -365,22 +370,29 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
 window.switchMainTab=function(tab){
   const order=document.getElementById('maintab-page-order');
   const tum=document.getElementById('maintab-page-tum');
+  const ledger=document.getElementById('maintab-page-ledger');
   const btnOrder=document.getElementById('maintab-order');
   const btnTum=document.getElementById('maintab-tum');
+  const btnLedger=document.getElementById('maintab-ledger');
+
+  // reset all
+  [order,tum,ledger].forEach(p=>p.style.display='none');
+  [btnOrder,btnTum,btnLedger].forEach(b=>{b.style.color='var(--muted)';b.style.borderBottomColor='transparent';});
+
   if(tab==='order'){
-    order.style.display='block'; tum.style.display='none';
+    order.style.display='block';
     btnOrder.style.color='var(--accent)'; btnOrder.style.borderBottomColor='var(--accent)';
-    btnTum.style.color='var(--muted)'; btnTum.style.borderBottomColor='transparent';
-  } else {
-    order.style.display='none'; tum.style.display='block';
+  } else if(tab==='tum'){
+    tum.style.display='block';
     btnTum.style.color='var(--accent)'; btnTum.style.borderBottomColor='var(--accent)';
-    btnOrder.style.color='var(--muted)'; btnOrder.style.borderBottomColor='transparent';
     const iframe=document.querySelector('#maintab-page-tum iframe');
     const now=new Date();
     const msg={type:'SET_MONTH', year:now.getFullYear(), month:now.getMonth()};
-    // reload iframe every time tab is opened to guarantee fresh state
     iframe.onload=function(){ iframe.contentWindow.postMessage(msg,'*'); };
     iframe.src='sales_summary.html?t='+Date.now();
+  } else {
+    ledger.style.display='block';
+    btnLedger.style.color='var(--accent)'; btnLedger.style.borderBottomColor='var(--accent)';
   }
 }
 </script>
@@ -517,8 +529,9 @@ function buildCards(){
       b=`<div class="row"><label>${c.name}</label><input class="num-input" type="number" id="${c.key}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>`;
     } else if(c.type==='multi-kg'){
       b=(c.fields||[]).map(f=>{
-        const hasPaid = c.key==='muay' && f.id==='other';
-        const paidChk = hasPaid ? `<div style="display:flex;justify-content:flex-end;margin-top:.3rem;margin-bottom:.2rem;"><label style="display:flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" id="muay_other_paid" onchange="updateSummary()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);"/> จ่ายแล้ว</label></div>` : '';
+        const hasPaid = (c.key==='muay' && f.id==='other') || (c.key==='pearn' && f.id==='baan');
+        const chkId = c.key==='muay' ? 'muay_other_paid' : 'pearn_baan_paid';
+        const paidChk = hasPaid ? `<div style="display:flex;justify-content:flex-end;margin-top:.3rem;margin-bottom:.2rem;"><label style="display:flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" id="${chkId}" onchange="updateSummary()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);"/> จ่ายแล้ว</label></div>` : '';
         return `<div class="row"><label>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>${paidChk}`;
       }).join('');
     } else {
@@ -574,9 +587,11 @@ function loadIntoInputs(){
     if(c.type==='kg'){const el=document.getElementById(c.key);if(el) el.value=r[c.key]!=null?r[c.key]:'';}
     else (c.fields||[]).forEach(f=>{const el=document.getElementById(c.key+'_'+f.id);if(el) el.value=r[c.key+'_'+f.id]!=null?r[c.key+'_'+f.id]:'';});
   });
-  // restore muay other paid checkbox
-  const chk=document.getElementById('muay_other_paid');
-  if(chk) chk.checked=!!(r['muay_other_paid']);
+  // restore paid checkboxes
+  const muayChk=document.getElementById('muay_other_paid');
+  if(muayChk) muayChk.checked=!!(r['muay_other_paid']);
+  const pearnChk=document.getElementById('pearn_baan_paid');
+  if(pearnChk) pearnChk.checked=!!(r['pearn_baan_paid']);
   updateSummary();
 }
 
@@ -638,9 +653,11 @@ window.saveEntry=function(){
     if(c.type==='kg'){const v=getNum(c.key);entry[c.key]=v;if(v)hasData=true;}
     else (c.fields||[]).forEach(f=>{const v=getNum(c.key+'_'+f.id);entry[c.key+'_'+f.id]=v;if(v)hasData=true;});
   });
-  // save muay other paid state
-  const chk=document.getElementById('muay_other_paid');
-  if(chk) entry['muay_other_paid']=chk.checked;
+  // save muay other paid & pearn baan paid state
+  const muayChk=document.getElementById('muay_other_paid');
+  if(muayChk) entry['muay_other_paid']=muayChk.checked;
+  const pearnChk=document.getElementById('pearn_baan_paid');
+  if(pearnChk) entry['pearn_baan_paid']=pearnChk.checked;
   const isEdit=!!records[currentDate];
   if(!hasData && !isEdit){showToast('⚠️ กรุณากรอกยอดอย่างน้อยหนึ่งรายการ');return;}
 
@@ -838,8 +855,9 @@ window.previewBill=function(){
     // เปิ้ล ดึงเฉพาะสะพานปลา
     // เจ้หมวย: รวมอื่นๆ ถ้ายังไม่ได้จ่าย
     let kg;
-    if(custKey==='pearn') kg=r['pearn_sapan']||0;
-    else if(custKey==='muay'){
+    if(custKey==='pearn'){
+      kg=r['pearn_sapan']||0;
+    } else if(custKey==='muay'){
       const ole=r['muay_ole']||0;
       const other=r['muay_other_paid'] ? 0 : (r['muay_other']||0);
       kg=ole+other;
