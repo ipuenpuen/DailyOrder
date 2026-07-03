@@ -231,7 +231,8 @@
 
     <div class="month-nav">
       <button type="button" id="prevMonth" class="nav-btn" title="เดือนก่อนหน้า">‹</button>
-      <div class="month-label" id="monthLabel">-</div>
+      <select id="monthSelect" style="font-family:'Sarabun',sans-serif;font-size:.88rem;padding:.3rem .5rem;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);cursor:pointer;"></select>
+      <select id="yearSelect" style="font-family:'JetBrains Mono',monospace;font-size:.88rem;padding:.3rem .5rem;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);cursor:pointer;"></select>
       <button type="button" id="nextMonth" class="nav-btn" title="เดือนถัดไป">›</button>
       <button type="button" id="allMonthsBtn" class="all-btn">ดูทั้งหมด</button>
     </div>
@@ -492,8 +493,25 @@ wirePanelFilter($('incomeFilterToggle'), f=>{ incomeFilter = f; renderAll(); });
 wirePanelFilter($('expenseFilterToggle'), f=>{ expenseFilter = f; renderAll(); });
 
 /* ---- Month navigation (entry tab) ---- */
+function populateMonthYearSelects(){
+  const mSel=$('monthSelect'), ySel=$('yearSelect');
+  if(!mSel||!ySel) return;
+  // months
+  if(!mSel.options.length){
+    THAI_MONTHS.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=m; mSel.appendChild(o); });
+  }
+  // years: current year ±5
+  const curY=new Date().getFullYear();
+  if(!ySel.options.length){
+    for(let y=curY-5;y<=curY+1;y++){ const o=document.createElement('option'); o.value=y; o.textContent=y+543; ySel.appendChild(o); }
+  }
+  mSel.value=selectedMonthIdx;
+  ySel.value=selectedYear;
+}
 function updateMonthLabel(){
-  $('monthLabel').textContent = viewAllMonths ? 'ทุกเดือน' : `${THAI_MONTHS[selectedMonthIdx]} ${selectedYear+543}`;
+  const mSel=$('monthSelect'), ySel=$('yearSelect');
+  if(mSel) mSel.value=selectedMonthIdx;
+  if(ySel) ySel.value=selectedYear;
   $('allMonthsBtn').classList.toggle('active', viewAllMonths);
   $('prevMonth').disabled = false;
   $('nextMonth').disabled = false;
@@ -510,10 +528,18 @@ $('nextMonth').addEventListener('click', ()=>{
   if(selectedMonthIdx > 11){ selectedMonthIdx = 0; selectedYear++; }
   updateMonthLabel(); renderAll();
 });
+// dropdown change handlers
+document.getElementById('monthSelect').addEventListener('change', function(){
+  viewAllMonths=false; selectedMonthIdx=parseInt(this.value); updateMonthLabel(); renderAll();
+});
+document.getElementById('yearSelect').addEventListener('change', function(){
+  viewAllMonths=false; selectedYear=parseInt(this.value); updateMonthLabel(); renderAll();
+});
 $('allMonthsBtn').addEventListener('click', ()=>{
   viewAllMonths = !viewAllMonths;
   updateMonthLabel(); renderAll();
 });
+populateMonthYearSelects();
 updateMonthLabel();
 
 /* ---- Firebase Realtime Database sync ---- */
