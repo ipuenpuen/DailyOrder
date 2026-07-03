@@ -486,8 +486,8 @@ const CUSTOMERS=[
   {key:'jiab',    name:'เจี๊ยบ',   color:MONO.slate, light:MONO.slateLt, type:'kg'},
   {key:'tom',     name:'ต้อม',     color:MONO.slate, light:MONO.slateLt, type:'kg'},
   {key:'tip',     name:'ทิพย์',    color:MONO.slate, light:MONO.slateLt, type:'kg'},
-  {key:'chaum',   name:'ชะอำ',     color:MONO.slate, light:MONO.slateLt, type:'kg'},
   {key:'pop',     name:'ภพ',       color:MONO.slate, light:MONO.slateLt, type:'kg'},
+  {key:'chaum',   name:'ชะอำ',     color:MONO.slate, light:MONO.slateLt, type:'multi-kg', fields:[{id:'male',label:'ชาย'},{id:'female',label:'หญิง'}]},
 ];
 
 let currentDate=todayStr();
@@ -530,12 +530,27 @@ function buildCards(){
     if(c.type==='kg'){
       b=`<div class="row"><label>${c.name}</label><input class="num-input" type="number" id="${c.key}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>`;
     } else if(c.type==='multi-kg'){
-      b=(c.fields||[]).map(f=>{
-        const hasPaid = (c.key==='muay' && f.id==='other') || (c.key==='pearn' && f.id==='baan');
-        const chkId = c.key==='muay' ? 'muay_other_paid' : 'pearn_baan_paid';
-        const paidChk = hasPaid ? `<div style="display:flex;justify-content:flex-end;margin-top:.3rem;margin-bottom:.2rem;"><label style="display:flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" id="${chkId}" onchange="updateSummary()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);"/> จ่ายแล้ว</label></div>` : '';
-        return `<div class="row"><label>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>${paidChk}`;
-      }).join('');
+      if(c.key==='chaum'){
+        b=`<div style="display:flex;gap:.5rem;align-items:flex-start;">
+          ${c.fields.map(f=>`<div style="flex:1;display:flex;flex-direction:column;gap:.3rem;">
+            <div style="display:flex;align-items:center;gap:.25rem;">
+              <label style="font-size:.75rem;color:var(--muted);white-space:nowrap;">${f.label}</label>
+              <input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()" style="width:52px;"/>
+              <span class="unit-lbl">กก.</span>
+            </div>
+            <label style="display:flex;align-items:center;gap:.25rem;font-size:.7rem;color:var(--muted);cursor:pointer;padding-left:2.2rem;">
+              <input type="checkbox" id="chaum_${f.id}_paid" onchange="updateSummary()" style="width:13px;height:13px;cursor:pointer;accent-color:var(--accent);"/> จ่ายแล้ว
+            </label>
+          </div>`).join('')}
+        </div>`;
+      } else {
+        b=(c.fields||[]).map(f=>{
+          const hasPaid = (c.key==='muay' && f.id==='other') || (c.key==='pearn' && f.id==='baan');
+          const chkId = c.key==='muay' ? 'muay_other_paid' : 'pearn_baan_paid';
+          const paidChk = hasPaid ? `<div style="display:flex;justify-content:flex-end;margin-top:.3rem;margin-bottom:.2rem;"><label style="display:flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" id="${chkId}" onchange="updateSummary()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);"/> จ่ายแล้ว</label></div>` : '';
+          return `<div class="row"><label>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>${paidChk}`;
+        }).join('');
+      }
     } else {
       const unitLabel=c.unit||'ถัง';
       b=(c.fields||[]).map(f=>`<div class="row"><label><span class="dot" style="background:${f.dot}"></span>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">${unitLabel}</span></div>`).join('')
@@ -594,6 +609,10 @@ function loadIntoInputs(){
   if(muayChk) muayChk.checked=!!(r['muay_other_paid']);
   const pearnChk=document.getElementById('pearn_baan_paid');
   if(pearnChk) pearnChk.checked=!!(r['pearn_baan_paid']);
+  const chaumMaleChk=document.getElementById('chaum_male_paid');
+  if(chaumMaleChk) chaumMaleChk.checked=!!(r['chaum_male_paid']);
+  const chaumFemaleChk=document.getElementById('chaum_female_paid');
+  if(chaumFemaleChk) chaumFemaleChk.checked=!!(r['chaum_female_paid']);
   updateSummary();
 }
 
@@ -660,6 +679,10 @@ window.saveEntry=function(){
   if(muayChk) entry['muay_other_paid']=muayChk.checked;
   const pearnChk=document.getElementById('pearn_baan_paid');
   if(pearnChk) entry['pearn_baan_paid']=pearnChk.checked;
+  const chaumMaleChk=document.getElementById('chaum_male_paid');
+  if(chaumMaleChk) entry['chaum_male_paid']=chaumMaleChk.checked;
+  const chaumFemaleChk=document.getElementById('chaum_female_paid');
+  if(chaumFemaleChk) entry['chaum_female_paid']=chaumFemaleChk.checked;
   const isEdit=!!records[currentDate];
   if(!hasData && !isEdit){showToast('⚠️ กรุณากรอกยอดอย่างน้อยหนึ่งรายการ');return;}
 
