@@ -538,9 +538,9 @@ function buildCards(){
           const ds = d.toLocaleDateString('sv-SE');
           weekKg += (records[ds]||{})['sakuna']||0;
         }
-        const weekBaht = Math.round(weekKg*47);
+        const weekBaht = Math.round(weekKg*46);
         const satChk = `<div style="margin-top:.3rem;">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--muted);">${weekKg.toLocaleString('th-TH')} กก. × 47</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--muted);">${weekKg.toLocaleString('th-TH')} กก. × 46</div>
           <div style="display:flex;align-items:center;gap:.5rem;margin-top:.2rem;">
             <span style="font-family:'JetBrains Mono',monospace;font-size:.88rem;font-weight:700;color:var(--accent);">= ${weekBaht.toLocaleString('th-TH')} บ.</span>
             <label style="display:flex;align-items:center;gap:.3rem;font-size:.75rem;color:var(--muted);cursor:pointer;margin-left:auto;">
