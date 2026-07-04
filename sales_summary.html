@@ -175,6 +175,31 @@
   <button class="month-btn" id="next-btn">&#8594;</button>
 </div>
 
+<div style="max-width:900px;margin:.6rem auto;padding:0 1rem;display:flex;justify-content:flex-end;">
+  <button onclick="openTumBillModal()" style="padding:.5rem 1.1rem;background:#2C3E55;color:#fff;border:none;border-radius:8px;font-family:'Sarabun',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;">🧾 ตัดบัญชี</button>
+</div>
+
+<!-- TUM BILL MODAL -->
+<div id="tum-bill-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;overflow-y:auto;padding:1.5rem 1rem;">
+  <div style="background:#fff;border-radius:16px;max-width:420px;margin:0 auto;padding:1.4rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <span style="font-size:1rem;font-weight:700;">ตัดบัญชีตั้ม</span>
+      <button onclick="closeTumBillModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#6B7A8D;">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.7rem;">
+      <div>
+        <label style="font-size:.72rem;color:#6B7A8D;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">จากวันที่</label>
+        <input type="date" id="tum-bill-from" style="width:100%;margin-top:.3rem;padding:.5rem .7rem;border:1.5px solid #D4DCE6;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.85rem;outline:none;"/>
+      </div>
+      <div>
+        <label style="font-size:.72rem;color:#6B7A8D;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">ถึงวันที่</label>
+        <input type="date" id="tum-bill-to" style="width:100%;margin-top:.3rem;padding:.5rem .7rem;border:1.5px solid #D4DCE6;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:.85rem;outline:none;"/>
+      </div>
+      <button onclick="printTumBill()" style="width:100%;padding:.65rem;background:#2C3E55;color:#fff;border:none;border-radius:8px;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;margin-top:.3rem;">🧾 พิมพ์บิล</button>
+    </div>
+  </div>
+</div>
+
 <div class="hint-wrap">
 
 </div>
@@ -499,6 +524,114 @@ dbRef.on('value', (snap) => {
   renderAll();
   setSync('ok', 'ซิงค์แล้ว · ข้อมูลใช้ร่วมกัน (Firebase)');
 });
-</script>
+
+// ══ TUM BILL ══
+const PRICES = { '500': 24, '250': 14 };
+
+function openTumBillModal(){
+  const now = new Date();
+  const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');
+  document.getElementById('tum-bill-from').value = `${y}-${m}-01`;
+  document.getElementById('tum-bill-to').value = now.toLocaleDateString('sv-SE');
+  document.getElementById('tum-bill-modal').style.display = 'block';
+}
+function closeTumBillModal(){
+  document.getElementById('tum-bill-modal').style.display = 'none';
+}
+
+function printTumBill(){
+  const from = document.getElementById('tum-bill-from').value;
+  const to   = document.getElementById('tum-bill-to').value;
+  if(!from||!to||from>to){ alert('กรุณาเลือกช่วงวันที่ให้ถูกต้อง'); return; }
+
+  function fmtDate(str){ const[y,m,d]=str.split('-'); return `${d}/${m}/${parseInt(y)+543}`; }
+
+  function buildSection(type){
+    const price = PRICES[type];
+    const label = type==='500' ? 'ทอดมัน 500g' : 'ทอดมัน 250g';
+    const color = type==='500' ? '#E67E22' : '#2980B9';
+
+    const rows = [];
+    let d = new Date(from), end = new Date(to);
+    while(d <= end){
+      const dateStr = d.toLocaleDateString('sv-SE');
+      const [gy, gm, gd] = dateStr.split('-');
+      const key = `${gy}-${parseInt(gm)-1}-${parseInt(gd)}`;
+      const dayData = (data[type]||{})[key]||[];
+      const pkgs = Array.isArray(dayData)
+        ? dayData.reduce((s,e)=>s+(typeof e==='object'?e.val||0:e||0),0)
+        : 0;
+      rows.push({ date: dateStr, pkgs });
+      d.setDate(d.getDate()+1);
+    }
+
+    const totalPkgs = rows.reduce((s,r)=>s+r.pkgs, 0);
+    const totalBaht = totalPkgs * price;
+
+    const rowsHTML = rows.map(r=>`
+      <tr>
+        <td style="padding:.32rem .55rem;border-bottom:1px solid #e0e0e0;text-align:center;">${fmtDate(r.date)}</td>
+        <td style="padding:.32rem .55rem;border-bottom:1px solid #e0e0e0;text-align:center;">${label}</td>
+        <td style="padding:.32rem .55rem;border-bottom:1px solid #e0e0e0;text-align:right;">${r.pkgs.toLocaleString()}</td>
+        <td style="padding:.32rem .55rem;border-bottom:1px solid #e0e0e0;text-align:right;">${price}</td>
+        <td style="padding:.32rem .55rem;border-bottom:1px solid #e0e0e0;text-align:right;font-weight:${r.pkgs>0?'700':'400'}">${(r.pkgs*price).toLocaleString()}</td>
+      </tr>`).join('');
+
+    return { html: `
+      <div style="margin-bottom:1.2rem;">
+        <div style="background:${color};color:#fff;padding:.3rem .7rem;border-radius:5px 5px 0 0;">
+          <span style="font-size:.85rem;font-weight:700;">${label} — แพคละ ${price} บาท</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:.78rem;border:1px solid #ccc;border-top:none;border-radius:0 0 5px 5px;">
+          <thead>
+            <tr style="background:#1E2A38;color:#fff;">
+              <th style="padding:.4rem .55rem;text-align:center;">วันที่</th>
+              <th style="padding:.4rem .55rem;text-align:center;">รายการ</th>
+              <th style="padding:.4rem .55rem;text-align:right;">แพค</th>
+              <th style="padding:.4rem .55rem;text-align:right;">ราคา/แพค</th>
+              <th style="padding:.4rem .55rem;text-align:right;">รวม</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHTML}</tbody>
+        </table>
+        <div style="display:flex;justify-content:space-between;padding:.4rem .55rem;border:1px solid #ccc;border-top:none;border-radius:0 0 5px 5px;background:#f9f9f9;">
+          <span style="font-weight:700;font-size:.82rem;">รวม ${label}</span>
+          <span style="font-size:.78rem;">${totalPkgs.toLocaleString()} แพค</span>
+          <span style="font-weight:700;font-size:.88rem;">${totalBaht.toLocaleString()} บาท</span>
+        </div>
+      </div>`, total: totalBaht };
+  }
+
+  const s500 = buildSection('500');
+  const s250 = buildSection('250');
+  const grandTotal = s500.total + s250.total;
+
+  const content = `
+    <div style="font-family:'Sarabun',sans-serif;color:#1E2A38;">
+      <div style="text-align:center;background:#2C3E55;color:#fff;padding:.4rem;border-radius:6px 6px 0 0;">
+        <h2 style="font-size:.95rem;font-weight:700;margin:0;">ตั๋วตัดบัญชี — ยอดตั้ม</h2>
+      </div>
+      <div style="border:1px solid #ccc;border-top:none;border-radius:0 0 6px 6px;padding:.7rem .8rem .8rem;">
+        <p style="font-size:.75rem;color:#6B7A8D;margin-bottom:.8rem;">${fmtDate(from)} – ${fmtDate(to)}</p>
+        ${s500.html}
+        ${s250.html}
+        <div style="display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid #2C3E55;padding-top:.5rem;margin-top:.2rem;">
+          <span style="font-size:1rem;font-weight:700;">รวมทั้งหมด</span>
+          <span style="font-size:1.2rem;font-weight:700;">${grandTotal.toLocaleString()} บาท</span>
+        </div>
+      </div>
+    </div>`;
+
+  closeTumBillModal();
+  const win = window.open('','_blank','width=700,height=900');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet"/>
+    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Sarabun',sans-serif;color:#1E2A38;background:#fff;padding:1cm;}
+    @media print{@page{size:A4 portrait;margin:1.5cm 2cm;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}</style>
+  </head><body>${content}
+  <script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>
+  </body></html>`);
+  win.document.close();
+}</script>
 </body>
 </html>

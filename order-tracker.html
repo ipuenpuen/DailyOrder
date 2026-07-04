@@ -177,6 +177,7 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
     <button id="maintab-order" onclick="switchMainTab('order')" style="flex:1;padding:.7rem .5rem;border:none;background:none;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;color:var(--accent);cursor:pointer;border-bottom:2.5px solid var(--accent);">🥟 ยอดทอดมันรายวัน</button>
     <button id="maintab-tum" onclick="switchMainTab('tum')" style="flex:1;padding:.7rem .5rem;border:none;background:none;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;">📊 ยอดทอดมันตั้ม</button>
     <button id="maintab-ledger" onclick="switchMainTab('ledger')" style="flex:1;padding:.7rem .5rem;border:none;background:none;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;">📒 บัญชีรายรับ-จ่าย</button>
+    <button id="maintab-pay" onclick="switchMainTab('pay')" style="flex:1;padding:.7rem .5rem;border:none;background:none;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;">💰 ติดตามชำระ</button>
   </div>
 </div>
 
@@ -364,37 +365,35 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
   <iframe id="ledger-iframe" src="ledger.html" title="บัญชีรายรับ-รายจ่าย" style="width:100%;height:100%;border:none;display:block;"></iframe>
 </div>
 
+<div id="maintab-page-pay" style="display:none;height:calc(100vh - 48px);">
+  <iframe id="pay-iframe" src="payment_tracker.html" title="ติดตามชำระ" style="width:100%;height:100%;border:none;display:block;"></iframe>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 window.switchMainTab=function(tab){
-  const order=document.getElementById('maintab-page-order');
-  const tum=document.getElementById('maintab-page-tum');
-  const ledger=document.getElementById('maintab-page-ledger');
-  const btnOrder=document.getElementById('maintab-order');
-  const btnTum=document.getElementById('maintab-tum');
-  const btnLedger=document.getElementById('maintab-ledger');
+  ['order','tum','ledger','pay'].forEach(t=>{
+    document.getElementById('maintab-page-'+t).style.display='none';
+    const b=document.getElementById('maintab-'+t);
+    b.style.color='var(--muted)'; b.style.borderBottomColor='transparent';
+  });
+  document.getElementById('maintab-page-'+tab).style.display='block';
+  const ab=document.getElementById('maintab-'+tab);
+  ab.style.color='var(--accent)'; ab.style.borderBottomColor='var(--accent)';
 
-  // reset all
-  [order,tum,ledger].forEach(p=>p.style.display='none');
-  [btnOrder,btnTum,btnLedger].forEach(b=>{b.style.color='var(--muted)';b.style.borderBottomColor='transparent';});
-
-  if(tab==='order'){
-    order.style.display='block';
-    btnOrder.style.color='var(--accent)'; btnOrder.style.borderBottomColor='var(--accent)';
-  } else if(tab==='tum'){
-    tum.style.display='block';
-    btnTum.style.color='var(--accent)'; btnTum.style.borderBottomColor='var(--accent)';
+  if(tab==='tum'){
     const iframe=document.querySelector('#maintab-page-tum iframe');
     const now=new Date();
     const msg={type:'SET_MONTH', year:now.getFullYear(), month:now.getMonth()};
     iframe.onload=function(){ iframe.contentWindow.postMessage(msg,'*'); };
     iframe.src='sales_summary.html?t='+Date.now();
-  } else {
-    ledger.style.display='block';
-    btnLedger.style.color='var(--accent)'; btnLedger.style.borderBottomColor='var(--accent)';
+  } else if(tab==='ledger'){
     const lframe=document.getElementById('ledger-iframe');
     lframe.src='ledger.html?t='+Date.now();
+  } else if(tab==='pay'){
+    const pframe=document.getElementById('pay-iframe');
+    pframe.src='payment_tracker.html?t='+Date.now();
   }
 }
 </script>
@@ -528,7 +527,31 @@ function buildCards(){
   document.getElementById('cards-container').innerHTML=CUSTOMERS.map(c=>{
     let b;
     if(c.type==='kg'){
-      b=`<div class="row"><label>${c.name}</label><input class="num-input" type="number" id="${c.key}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>`;
+      const isSat = new Date(currentDate).getDay()===6;
+      if(c.key==='sakuna' && isSat){
+        // calculate Mon–Sat kg for current week
+        const satDate = new Date(currentDate);
+        let weekKg = 0;
+        for(let i=5; i>=0; i--){
+          const d = new Date(satDate);
+          d.setDate(satDate.getDate()-i);
+          const ds = d.toLocaleDateString('sv-SE');
+          weekKg += (records[ds]||{})['sakuna']||0;
+        }
+        const weekBaht = Math.round(weekKg*47);
+        const satChk = `<div style="margin-top:.3rem;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--muted);">${weekKg.toLocaleString('th-TH')} กก. × 47</div>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.2rem;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:.88rem;font-weight:700;color:var(--accent);">= ${weekBaht.toLocaleString('th-TH')} บ.</span>
+            <label style="display:flex;align-items:center;gap:.3rem;font-size:.75rem;color:var(--muted);cursor:pointer;margin-left:auto;">
+              <input type="checkbox" id="sakuna_paid" onchange="saveSakunaPaid()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);"/> จ่ายแล้ว
+            </label>
+          </div>
+        </div>`;
+        b=`<div class="row"><label>${c.name}</label><input class="num-input" type="number" id="${c.key}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>${satChk}`;
+      } else {
+        b=`<div class="row"><label>${c.name}</label><input class="num-input" type="number" id="${c.key}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>`;
+      }
     } else if(c.type==='multi-kg'){
       if(c.key==='chaum'){
         b=`<div style="display:flex;gap:.5rem;align-items:flex-start;">
@@ -598,8 +621,19 @@ window.updateSummary=function(){
   refreshGrandTotal();
 }
 
+window.saveSakunaPaid=function(){
+  const chk=document.getElementById('sakuna_paid');
+  if(!chk) return;
+  const r=records[currentDate]||{};
+  r['sakuna_paid']=chk.checked;
+  records[currentDate]=r;
+  saveWS();
+}
+
 function loadIntoInputs(){
   const r=records[currentDate]||{};
+  // rebuild cards so sakuna checkbox shows/hides based on day of week
+  buildCards(); applyFocusStyles();
   CUSTOMERS.forEach(c=>{
     if(c.type==='kg'){const el=document.getElementById(c.key);if(el) el.value=r[c.key]!=null?r[c.key]:'';}
     else (c.fields||[]).forEach(f=>{const el=document.getElementById(c.key+'_'+f.id);if(el) el.value=r[c.key+'_'+f.id]!=null?r[c.key+'_'+f.id]:'';});
@@ -613,6 +647,8 @@ function loadIntoInputs(){
   if(chaumMaleChk) chaumMaleChk.checked=!!(r['chaum_male_paid']);
   const chaumFemaleChk=document.getElementById('chaum_female_paid');
   if(chaumFemaleChk) chaumFemaleChk.checked=!!(r['chaum_female_paid']);
+  const sakunaChk=document.getElementById('sakuna_paid');
+  if(sakunaChk) sakunaChk.checked=!!(r['sakuna_paid']);
   updateSummary();
 }
 

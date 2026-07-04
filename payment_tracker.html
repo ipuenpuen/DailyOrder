@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ติดตามการชำระเงิน</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#F0F4F8;--paper:#fff;--ink:#1E2A38;--muted:#6B7A8D;
+  --rule:#D4DCE6;--accent:#3B7DD8;--accent-light:#E8F0FB;
+  --green:#27AE60;--green-light:#EFF8F2;
+  --red:#C0392B;--red-light:#FDF0F0;
+  --orange:#E67E22;--orange-light:#FEF5EC;
+}
+body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-height:100vh;padding:1.2rem 1rem 4rem;}
+.page{max-width:700px;margin:0 auto;}
+
+/* month nav */
+.month-nav{display:flex;align-items:center;gap:.6rem;margin-bottom:1.2rem;}
+.mnav-btn{width:30px;height:30px;border:1px solid var(--rule);background:var(--paper);border-radius:7px;cursor:pointer;font-size:.9rem;color:var(--ink);}
+.mnav-btn:hover{background:var(--accent-light);color:var(--accent);}
+.month-label{font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:700;flex:1;text-align:center;background:var(--paper);border:1px solid var(--rule);border-radius:8px;padding:.32rem .7rem;}
+#sync-dot{font-size:.65rem;color:var(--muted);margin-left:auto;}
+
+/* customer sections */
+.cust-section{background:var(--paper);border:1px solid var(--rule);border-radius:14px;overflow:hidden;margin-bottom:1rem;}
+.cust-head{padding:.6rem 1rem;background:#1E2A38;color:#fff;display:flex;align-items:center;justify-content:space-between;}
+.cust-name{font-size:.95rem;font-weight:700;}
+.cust-total{font-family:'JetBrains Mono',monospace;font-size:.82rem;opacity:.8;}
+
+/* rounds */
+.round-row{border-bottom:1px solid var(--rule);padding:.65rem 1rem;}
+.round-row:last-child{border-bottom:none;}
+.round-top{display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem;}
+.round-label{font-size:.75rem;font-weight:700;color:var(--muted);width:5rem;flex-shrink:0;}
+.round-amount{font-family:'JetBrains Mono',monospace;font-size:.95rem;font-weight:700;color:var(--ink);}
+.round-amount .unit{font-size:.65rem;color:var(--muted);margin-left:.2rem;}
+.status-badge{margin-left:auto;font-size:.65rem;font-weight:700;padding:.18rem .5rem;border-radius:5px;}
+.status-unpaid{background:var(--red-light);color:var(--red);}
+.status-paid{background:var(--green-light);color:var(--green);}
+.status-partial{background:var(--orange-light);color:var(--orange);}
+
+/* payment form */
+.pay-form{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;}
+.pay-type-grp{display:flex;gap:.3rem;}
+.pay-type-btn{padding:.28rem .6rem;border:1.5px solid var(--rule);background:var(--paper);border-radius:6px;font-family:'Sarabun',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer;color:var(--muted);transition:all .15s;}
+.pay-type-btn.active-cash{border-color:var(--green);background:var(--green-light);color:var(--green);}
+.pay-type-btn.active-check{border-color:var(--accent);background:var(--accent-light);color:var(--accent);}
+.pay-date-inp{font-family:'JetBrains Mono',monospace;font-size:.72rem;padding:.28rem .5rem;border:1.5px solid var(--rule);border-radius:6px;color:var(--ink);outline:none;}
+.pay-amount-inp{font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:600;width:90px;padding:.28rem .5rem;border:1.5px solid var(--rule);border-radius:6px;color:var(--ink);outline:none;text-align:right;}
+.pay-amount-inp:focus,.pay-date-inp:focus{border-color:var(--accent);}
+.btn-save-pay{padding:.3rem .8rem;background:var(--accent);color:#fff;border:none;border-radius:6px;font-family:'Sarabun',sans-serif;font-size:.75rem;font-weight:700;cursor:pointer;}
+.btn-save-pay:hover{opacity:.85;}
+.btn-clear-pay{padding:.3rem .6rem;background:none;color:var(--muted);border:1px solid var(--rule);border-radius:6px;font-family:'Sarabun',sans-serif;font-size:.72rem;cursor:pointer;}
+
+/* paid info */
+.paid-info{font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;}
+.paid-info .paid-type{font-weight:700;}
+.paid-info .paid-type.cash{color:var(--green);}
+.paid-info .paid-type.check{color:var(--accent);}
+.btn-edit-pay{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.68rem;text-decoration:underline;padding:0;}
+
+.section-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.7rem;padding-bottom:.38rem;border-bottom:1px solid var(--rule);}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="month-nav">
+    <button class="mnav-btn" onclick="shiftMonth(-1)">‹</button>
+    <div class="month-label" id="month-label">—</div>
+    <button class="mnav-btn" onclick="shiftMonth(1)">›</button>
+    <span id="sync-dot">●</span>
+  </div>
+  <div id="custs-container"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyATvjHe9WsHMERsCJ5Yh4j46WR6vZZ33nY",
+  authDomain: "daily-order-d9187.firebaseapp.com",
+  databaseURL: "https://daily-order-d9187-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "daily-order-d9187",
+  storageBucket: "daily-order-d9187.firebasestorage.app",
+  messagingSenderId: "1019686539563",
+  appId: "1:1019686539563:web:f7757d4da1d6896fff756e"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ── config ──────────────────────────────────────
+const BILL_CUSTOMERS = [
+  { key:'pearn',   name:'เปิ้ล',     price:45 },
+  { key:'muay',    name:'เจ้หมวย',   price:45 },
+  { key:'dragon',  name:'ร.มังกร',   price:45 },
+  { key:'raknong', name:'รักน้องพร', price:47 },
+  { key:'jeed',    name:'เจ้จี้ด',   price:45 },
+];
+const ROUNDS = [
+  { id:'r1', label:'รอบ 1', start:1,  end:10  },
+  { id:'r2', label:'รอบ 2', start:11, end:20  },
+  { id:'r3', label:'รอบ 3', start:21, end:31  },
+];
+const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                     'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
+// ── state ────────────────────────────────────────
+const now = new Date();
+let viewYear  = now.getFullYear();
+let viewMonth = now.getMonth(); // 0-based
+let wsRecords = {};   // from Firebase wholesale
+let payData   = {};   // our payment tracker data
+
+// ── helpers ──────────────────────────────────────
+function todayStr(){ return new Date().toLocaleDateString('sv-SE'); }
+function fmtDate(str){
+  if(!str) return '—';
+  const[y,m,d]=str.split('-');
+  return `${d}/${m}/${parseInt(y)+543}`;
+}
+function fmtNum(n){ return n%1===0 ? n.toLocaleString('th-TH') : n.toLocaleString('th-TH',{minimumFractionDigits:1,maximumFractionDigits:1}); }
+function daysInMonth(y,m){ return new Date(y,m+1,0).getDate(); }
+
+// compute kg for a customer over a date range from wsRecords
+function custKgRange(custKey, gy, gm, startD, endD){
+  let total = 0;
+  const cust = BILL_CUSTOMERS.find(c=>c.key===custKey);
+  if(!cust) return 0;
+  const maxD = Math.min(endD, daysInMonth(gy, gm));
+  for(let d=startD; d<=maxD; d++){
+    const mm = String(gm+1).padStart(2,'0');
+    const dd = String(d).padStart(2,'0');
+    const dateStr = `${gy}-${mm}-${dd}`;
+    const r = wsRecords[dateStr]||{};
+    let kg = 0;
+    if(custKey==='pearn'){
+      kg = r['pearn_sapan']||0;
+    } else if(custKey==='muay'){
+      const ole = r['muay_ole']||0;
+      const other = r['muay_other_paid'] ? 0 : (r['muay_other']||0);
+      kg = ole+other;
+    } else if(custKey==='dragon'){
+      kg = r['dragon']||0;
+    } else if(custKey==='raknong'){
+      const wb = r['raknong_wb']||0;
+      const mt = r['raknong_mt']||0;
+      kg = (wb+mt)*30;
+    } else if(custKey==='jeed'){
+      kg = r['jeed']||0;
+    }
+    total += kg;
+  }
+  return total;
+}
+
+// ── render ────────────────────────────────────────
+function renderMonthLabel(){
+  document.getElementById('month-label').textContent =
+    `${THAI_MONTHS[viewMonth]} ${viewYear+543}`;
+}
+
+function renderAll(){
+  const container = document.getElementById('custs-container');
+  const monthKey  = `${viewYear}-${String(viewMonth+1).padStart(2,'0')}`;
+  const payMonth  = (payData[monthKey])||{};
+
+  container.innerHTML = BILL_CUSTOMERS.map(cust => {
+    let custTotalBaht = 0;
+
+    const roundsHTML = ROUNDS.map(round => {
+      const endDay = round.id==='r3' ? daysInMonth(viewYear,viewMonth) : round.end;
+      const kg     = custKgRange(cust.key, viewYear, viewMonth, round.start, endDay);
+      const baht   = Math.round(kg * cust.price);
+      custTotalBaht += baht;
+
+      const payKey  = `${cust.key}_${round.id}`;
+      const payInfo = payMonth[payKey]||{};
+      const isPaid  = !!payInfo.paid;
+      const pType   = payInfo.type||'';  // 'cash' or 'check'
+      const pDate   = payInfo.date||'';
+      const pAmount = payInfo.amount!=null ? payInfo.amount : baht;
+
+      const statusBadge = isPaid
+        ? `<span class="status-badge status-paid">จ่ายแล้ว</span>`
+        : `<span class="status-badge status-unpaid">ค้างชำระ</span>`;
+
+      const paidInfoHTML = isPaid ? `
+        <div class="paid-info">
+          <span class="paid-type ${pType}">${pType==='cash'?'เงินสด':'เช็ค'}</span>
+          <span>${fmtDate(pDate)}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-weight:600;">${fmtNum(pAmount)} บาท</span>
+          <button class="btn-edit-pay" onclick="window._editPay('${monthKey}','${payKey}')">แก้ไข</button>
+        </div>` : `
+        <div class="pay-form" id="form_${payKey}">
+          <div class="pay-type-grp">
+            <button class="pay-type-btn" id="btn_cash_${payKey}" onclick="window._setType('${payKey}','cash')">เงินสด</button>
+            <button class="pay-type-btn" id="btn_check_${payKey}" onclick="window._setType('${payKey}','check')">เช็ค</button>
+          </div>
+          <input type="hidden" id="date_${payKey}" value="${todayStr()}"/>
+          <select id="dd_${payKey}" onchange="window._syncDate('${payKey}')" style="font-family:'Sarabun',sans-serif;font-size:.72rem;padding:.28rem .4rem;border:1.5px solid var(--rule);border-radius:6px;color:var(--ink);outline:none;background:#fff;">
+            ${Array.from({length:31},(_,i)=>`<option value="${String(i+1).padStart(2,'0')}" ${String(i+1).padStart(2,'0')===todayStr().split('-')[2]?'selected':''}>${i+1}</option>`).join('')}
+          </select>
+          <select id="mm_${payKey}" onchange="window._syncDate('${payKey}')" style="font-family:'Sarabun',sans-serif;font-size:.72rem;padding:.28rem .4rem;border:1.5px solid var(--rule);border-radius:6px;color:var(--ink);outline:none;background:#fff;">
+            ${['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'].map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}" ${String(i+1).padStart(2,'0')===todayStr().split('-')[1]?'selected':''}>${m}</option>`).join('')}
+          </select>
+          <select id="yy_${payKey}" onchange="window._syncDate('${payKey}')" style="font-family:'JetBrains Mono',monospace;font-size:.72rem;padding:.28rem .4rem;border:1.5px solid var(--rule);border-radius:6px;color:var(--ink);outline:none;background:#fff;">
+            ${Array.from({length:5},(_,i)=>{const y=new Date().getFullYear()-2+i;return`<option value="${y}" ${y===new Date().getFullYear()?'selected':''}>${y+543}</option>`;}).join('')}
+          </select>
+          <input type="number" class="pay-amount-inp" id="amt_${payKey}" value="${baht}" onfocus="this.select()"/>
+          <span style="font-size:.68rem;color:var(--muted);">บาท</span>
+          <button class="btn-save-pay" onclick="window._savePay('${monthKey}','${payKey}')">✓ บันทึก</button>
+        </div>`;
+
+      return `
+        <div class="round-row">
+          <div class="round-top">
+            <span class="round-label">${round.label}<br><span style="font-size:.62rem;font-weight:400;">${round.start}–${endDay}</span></span>
+            <span class="round-amount">${fmtNum(kg)} <span class="unit">กก.</span> = <b>${fmtNum(baht)}</b> บาท</span>
+            ${statusBadge}
+          </div>
+          ${paidInfoHTML}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="cust-section">
+        <div class="cust-head">
+          <span class="cust-name">${cust.name}</span>
+          <span class="cust-total">รวม ${fmtNum(custTotalBaht)} บาท</span>
+        </div>
+        ${roundsHTML}
+      </div>`;
+  }).join('');
+
+  // restore active pay type buttons
+  Object.keys(window._selectedType||{}).forEach(payKey=>{
+    const t = window._selectedType[payKey];
+    const btn = document.getElementById(`btn_${t}_${payKey}`);
+    if(btn){ btn.classList.add(t==='cash'?'active-cash':'active-check'); }
+  });
+}
+
+// ── actions ──────────────────────────────────────
+window._syncDate = function(payKey){
+  const dd = document.getElementById(`dd_${payKey}`)?.value;
+  const mm = document.getElementById(`mm_${payKey}`)?.value;
+  const yy = document.getElementById(`yy_${payKey}`)?.value;
+  const hidden = document.getElementById(`date_${payKey}`);
+  if(hidden && dd && mm && yy) hidden.value = `${yy}-${mm}-${dd}`;
+};
+
+window._selectedType = {};
+
+window._setType = function(payKey, type){
+  window._selectedType[payKey] = type;
+  ['cash','check'].forEach(t=>{
+    const btn=document.getElementById(`btn_${t}_${payKey}`);
+    if(btn){ btn.classList.remove('active-cash','active-check'); }
+  });
+  const btn=document.getElementById(`btn_${type}_${payKey}`);
+  if(btn) btn.classList.add(type==='cash'?'active-cash':'active-check');
+};
+
+window._savePay = function(monthKey, payKey){
+  const type   = window._selectedType[payKey];
+  const date   = document.getElementById(`date_${payKey}`)?.value;
+  const amount = parseFloat(document.getElementById(`amt_${payKey}`)?.value)||0;
+  if(!type){ alert('กรุณาเลือกประเภทการชำระ (เงินสด/เช็ค)'); return; }
+  if(!date){ alert('กรุณาเลือกวันที่'); return; }
+  const path = `payments/${monthKey}/${payKey}`;
+  set(ref(db, path), { paid:true, type, date, amount })
+    .then(()=>{ delete window._selectedType[payKey]; })
+    .catch(e=>alert('บันทึกไม่ได้: '+e.message));
+};
+
+window._editPay = function(monthKey, payKey){
+  const path = `payments/${monthKey}/${payKey}`;
+  if(!confirm('ต้องการแก้ไขการชำระนี้?')) return;
+  set(ref(db, path), null);
+};
+
+window.shiftMonth = function(delta){
+  viewMonth += delta;
+  if(viewMonth < 0){ viewMonth=11; viewYear--; }
+  if(viewMonth > 11){ viewMonth=0; viewYear++; }
+  renderMonthLabel();
+  renderAll();
+};
+
+// ── Firebase listeners ────────────────────────────
+const dot = document.getElementById('sync-dot');
+
+onValue(ref(db,'wholesale'), snap=>{
+  wsRecords = snap.val()||{};
+  dot.style.color='#27AE60'; dot.title='ซิงค์แล้ว';
+  renderAll();
+}, ()=>{ dot.style.color='#C0392B'; dot.title='ออฟไลน์'; });
+
+onValue(ref(db,'payments'), snap=>{
+  payData = snap.val()||{};
+  renderAll();
+});
+
+// ── init ─────────────────────────────────────────
+renderMonthLabel();
+</script>
+</body>
+</html>
