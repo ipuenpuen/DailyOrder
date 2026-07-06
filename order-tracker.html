@@ -492,6 +492,7 @@ const CUSTOMERS=[
 let currentDate=todayStr();
 let records={};
 let rtData={};
+let sakunaPaidData={};
 let _wsKg=0, _rtKg=0, _extraRtKg=0;
 
 // ══ FIREBASE: wholesale ══
@@ -624,10 +625,8 @@ window.updateSummary=function(){
 window.saveSakunaPaid=function(){
   const chk=document.getElementById('sakuna_paid');
   if(!chk) return;
-  const r=records[currentDate]||{};
-  r['sakuna_paid']=chk.checked;
-  records[currentDate]=r;
-  saveWS();
+  set(ref(db,`sakuna_paid/${currentDate}`), chk.checked)
+    .catch(()=>{});
 }
 
 function loadIntoInputs(){
@@ -648,7 +647,7 @@ function loadIntoInputs(){
   const chaumFemaleChk=document.getElementById('chaum_female_paid');
   if(chaumFemaleChk) chaumFemaleChk.checked=!!(r['chaum_female_paid']);
   const sakunaChk=document.getElementById('sakuna_paid');
-  if(sakunaChk) sakunaChk.checked=!!(r['sakuna_paid']);
+  if(sakunaChk) sakunaChk.checked=!!(sakunaPaidData[currentDate]);
   updateSummary();
 }
 
@@ -1089,6 +1088,13 @@ window.addEventListener('DOMContentLoaded',()=>{
   // listen audit log realtime
   onValue(ref(db,'auditlog'), snap=>{
     renderAuditLog(snap.val()||{});
+  });
+
+  // listen sakuna paid
+  onValue(ref(db,'sakuna_paid'), snap=>{
+    sakunaPaidData = snap.val()||{};
+    const chk=document.getElementById('sakuna_paid');
+    if(chk) chk.checked=!!(sakunaPaidData[currentDate]);
   });
 
   // listen tum (sales_summary) data realtime
