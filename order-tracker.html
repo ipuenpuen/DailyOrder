@@ -171,6 +171,79 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
 </head>
 <body>
 
+<!-- ── PIN LOCK ── -->
+<div id="pin-screen" style="position:fixed;inset:0;background:#1E2A38;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;">
+  <div style="color:#fff;font-size:1.2rem;font-weight:700;letter-spacing:.05em;opacity:.9;">🔒 ใส่รหัสเพื่อเข้าใช้งาน</div>
+  <div style="display:flex;gap:.6rem;">
+    <div class="pin-dot" id="dot0"></div>
+    <div class="pin-dot" id="dot1"></div>
+    <div class="pin-dot" id="dot2"></div>
+    <div class="pin-dot" id="dot3"></div>
+  </div>
+  <div id="pin-error" style="color:#FC8181;font-size:.82rem;min-height:1.2rem;"></div>
+  <div style="display:grid;grid-template-columns:repeat(3,72px);gap:.6rem;" id="pin-keypad"></div>
+</div>
+
+<style>
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:transparent;transition:background .15s;}
+.pin-dot.filled{background:#fff;border-color:#fff;}
+</style>
+
+<script>
+(function(){
+  const PIN='8142';
+  let entered='';
+
+  // build keypad
+  const keys=[1,2,3,4,5,6,7,8,9,null,0,'⌫'];
+  const kp=document.getElementById('pin-keypad');
+  keys.forEach(k=>{
+    const btn=document.createElement('button');
+    btn.textContent=k===null?'':String(k);
+    btn.disabled=k===null;
+    btn.style.cssText=`height:72px;font-size:${k==='⌫'?'1.4rem':'1.6rem'};font-weight:700;border:none;border-radius:14px;background:${k===null?'transparent':'rgba(255,255,255,.12)'};color:#fff;cursor:${k===null?'default':'pointer'};transition:background .15s;`;
+    if(k!==null){
+      btn.addEventListener('pointerdown',()=>btn.style.background='rgba(255,255,255,.25)');
+      btn.addEventListener('pointerup',()=>btn.style.background='rgba(255,255,255,.12)');
+      btn.addEventListener('click',()=>press(k));
+    }
+    kp.appendChild(btn);
+  });
+
+  function updateDots(){
+    for(let i=0;i<4;i++){
+      document.getElementById('dot'+i).classList.toggle('filled',i<entered.length);
+    }
+  }
+  function press(k){
+    if(k==='⌫'){ entered=entered.slice(0,-1); updateDots(); return; }
+    if(entered.length>=4) return;
+    entered+=String(k); updateDots();
+    if(entered.length===4) setTimeout(check,120);
+  }
+  function check(){
+    if(entered===PIN){
+      sessionStorage.setItem('pin_ok','1');
+      document.getElementById('pin-screen').style.display='none';
+    } else {
+      document.getElementById('pin-error').textContent='รหัสไม่ถูกต้อง ลองอีกครั้ง';
+      entered=''; updateDots();
+      setTimeout(()=>document.getElementById('pin-error').textContent='',1500);
+    }
+  }
+  if(sessionStorage.getItem('pin_ok')==='1'){
+    document.getElementById('pin-screen').style.display='none';
+  }
+
+  // keyboard support
+  document.addEventListener('keydown', function(e){
+    if(document.getElementById('pin-screen').style.display==='none') return;
+    if(e.key>='0' && e.key<='9') press(parseInt(e.key));
+    else if(e.key==='Backspace') press('⌫');
+  });
+})();
+</script>
+
 <!-- ── MAIN TAB NAV ── -->
 <div style="background:var(--paper);border-bottom:1px solid var(--rule);position:sticky;top:0;z-index:60;">
   <div style="max-width:960px;margin:0 auto;display:flex;">
