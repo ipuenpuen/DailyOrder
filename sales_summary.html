@@ -761,9 +761,23 @@ function pmRender(){
   const adYear=pmCurrentBEYear-543;
   const weeks=pmGenerateWeeks(adYear);
   const container=document.getElementById('pmMonths');
-  container.innerHTML='';
 
-  // group by month of start date
+  // if already built for this year, just update button states
+  if(container.dataset.year===String(adYear)){
+    container.querySelectorAll('.pm-status-btn').forEach(btn=>{
+      const startKey=btn.dataset.start;
+      const isPaid=!!(pmPayData[startKey]);
+      btn.classList.toggle('paid',isPaid);
+      btn.textContent=isPaid?'✓ ชำระแล้ว':'! ค้างชำระ';
+    });
+    pmUpdateSummary();
+    return;
+  }
+
+  // full rebuild for new year
+  container.innerHTML='';
+  container.dataset.year=String(adYear);
+
   const groups={};
   weeks.forEach(w=>{
     const m=Number(w.start.split('-')[1]);
@@ -776,31 +790,26 @@ function pmRender(){
     const monthTotal=list.reduce((s,w)=>s+pmWeekBaht(w.start,w.end),0);
     const unpaidCount=list.filter(w=>!pmPayData[w.start]).length;
 
-    const details=document.createElement('div');
-    details.className='pm-month';
-    details.dataset.open='false';
+    const card=document.createElement('div');
+    card.className='pm-month';
 
-    const summary=document.createElement('div');
-    summary.style.cssText='list-style:none;display:flex;align-items:center;justify-content:space-between;padding:11px 15px;cursor:pointer;';
-    summary.innerHTML=`<span class="m-name">${PM_MONTH_NAMES[mNum-1]}</span>
-      <span class="m-meta">
+    const head=document.createElement('div');
+    head.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:11px 15px;cursor:pointer;border-bottom:1px solid #E4D9BE;';
+    head.innerHTML=`<span style="font-family:'Kanit',sans-serif;font-weight:600;font-size:14px;color:#2A2620;">${PM_MONTH_NAMES[mNum-1]}</span>
+      <span style="display:flex;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6B6455;">
         <span class="pm-unpaid-label">${unpaidCount>0?unpaidCount+' รอบค้าง':'ชำระครบ'}</span>
-        <span class="m-total">${pmFmt(monthTotal)} บาท</span>
-        <span class="chevron">›</span>
+        <span class="m-total" style="font-weight:600;color:#2A2620;">${pmFmt(monthTotal)} บาท</span>
+        <span class="chevron" style="font-size:11px;transition:transform .15s;">›</span>
       </span>`;
-    summary.addEventListener('click', ()=>{
-      const isOpen=details.dataset.open==='true';
-      details.dataset.open=isOpen?'false':'true';
-      weekList.style.display=isOpen?'none':'block';
-      summary.querySelector('.chevron').style.transform=isOpen?'':'rotate(90deg)';
-    });
-    summary.addEventListener('click', ()=>{});
-    details.appendChild(summary);
 
-    const weekList=document.createElement('div');
-    weekList.className='pm-week-list';
-    weekList.style.display='none';
-    weekList.addEventListener('click', e=>e.stopPropagation());
+    const body=document.createElement('div');
+    body.style.display='none';
+
+    head.addEventListener('click',()=>{
+      const open=body.style.display==='block';
+      body.style.display=open?'none':'block';
+      head.querySelector('.chevron').style.transform=open?'':'rotate(90deg)';
+    });
 
     list.forEach((w,i)=>{
       const amt=pmWeekBaht(w.start,w.end);
@@ -815,10 +824,7 @@ function pmRender(){
         </div>
         <button class="pm-status-btn ${isPaid?'paid':''}" data-start="${w.start}">${isPaid?'✓ ชำระแล้ว':'! ค้างชำระ'}</button>`;
 
-      row.addEventListener('click', e=>e.stopPropagation());
       row.querySelector('.pm-status-btn').addEventListener('click', e=>{
-        e.stopPropagation();
-        e.preventDefault();
         const startKey=e.target.dataset.start;
         const nowPaid=!pmPayData[startKey];
         let payDb2;
@@ -827,11 +833,12 @@ function pmRender(){
         payDb2.ref(`tum_payments/${startKey}`).set(nowPaid||null);
       });
 
-      weekList.appendChild(row);
+      body.appendChild(row);
     });
 
-    details.appendChild(weekList);
-    container.appendChild(details);
+    card.appendChild(head);
+    card.appendChild(body);
+    container.appendChild(card);
   });
 
   pmUpdateSummary();
