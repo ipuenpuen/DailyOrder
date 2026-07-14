@@ -423,10 +423,28 @@ function populateDateSelects(){
   fDay.innerHTML = Array.from({length:31}, (_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
   fMonth.innerHTML = THAI_MONTHS.map((m,i)=>`<option value="${i}">${m}</option>`).join('');
   const nowY = new Date().getFullYear();
+  const curVal = fYear.value ? parseInt(fYear.value) : nowY;
+  const maxY = Math.max(nowY+10, curVal+5);
   const years = [];
-  for(let y = nowY+1; y >= nowY-5; y--) years.push(y);
+  for(let y = maxY; y >= nowY-5; y--) years.push(y);
+  const prevVal = fYear.value;
   fYear.innerHTML = years.map(y=>`<option value="${y}">${y+543}</option>`).join('');
+  if(prevVal) fYear.value = prevVal;
+  else fYear.value = nowY;
 }
+// extend year options when near the top
+fYear.addEventListener('change', ()=>{
+  const y = parseInt(fYear.value);
+  const lastOpt = parseInt(fYear.options[0].value);
+  if(y >= lastOpt - 2){
+    for(let ny = lastOpt+1; ny <= lastOpt+5; ny++){
+      const o = document.createElement('option');
+      o.value = ny; o.textContent = ny+543;
+      fYear.insertBefore(o, fYear.firstChild);
+    }
+  }
+  adjustDayOptions();
+});
 function adjustDayOptions(){
   const y = parseInt(fYear.value), m = parseInt(fMonth.value);
   const daysInMonth = new Date(y, m+1, 0).getDate();
@@ -500,10 +518,15 @@ function populateMonthYearSelects(){
   if(!mSel.options.length){
     THAI_MONTHS.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=m; mSel.appendChild(o); });
   }
-  // years: current year ±5
+  // years: current year ±5, extend forward automatically
   const curY=new Date().getFullYear();
   if(!ySel.options.length){
-    for(let y=curY-5;y<=curY+1;y++){ const o=document.createElement('option'); o.value=y; o.textContent=y+543; ySel.appendChild(o); }
+    for(let y=curY-5;y<=curY+10;y++){ const o=document.createElement('option'); o.value=y; o.textContent=y+543; ySel.appendChild(o); }
+  }
+  // extend if near end
+  const lastY=Number(ySel.options[ySel.options.length-1].value);
+  if(selectedYear>=lastY-2){
+    for(let y=lastY+1;y<=lastY+10;y++){ const o=document.createElement('option'); o.value=y; o.textContent=y+543; ySel.appendChild(o); }
   }
   mSel.value=selectedMonthIdx;
   ySel.value=selectedYear;
@@ -533,7 +556,7 @@ document.getElementById('monthSelect').addEventListener('change', function(){
   viewAllMonths=false; selectedMonthIdx=parseInt(this.value); updateMonthLabel(); renderAll();
 });
 document.getElementById('yearSelect').addEventListener('change', function(){
-  viewAllMonths=false; selectedYear=parseInt(this.value); updateMonthLabel(); renderAll();
+  viewAllMonths=false; selectedYear=parseInt(this.value); populateMonthYearSelects(); updateMonthLabel(); renderAll();
 });
 $('allMonthsBtn').addEventListener('click', ()=>{
   viewAllMonths = !viewAllMonths;

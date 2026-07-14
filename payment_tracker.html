@@ -78,7 +78,7 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import { getDatabase, ref, set, onValue, push, remove } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyATvjHe9WsHMERsCJ5Yh4j46WR6vZZ33nY",
@@ -91,6 +91,14 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db  = getDatabase(app);
+
+// ledger Firebase (moneydaily)
+const ledgerApp = initializeApp({
+  apiKey:"AIzaSyBPQOSf7z7x-xAoyMWHHzS17jsqaHz8f6M",
+  databaseURL:"https://moneydaily-274a7-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"moneydaily-274a7"
+}, 'ledgerApp');
+const ledgerDb = getDatabase(ledgerApp);
 
 // ── config ──────────────────────────────────────
 const BILL_CUSTOMERS = [
@@ -265,21 +273,45 @@ window._setType = function(payKey, type){
   if(btn) btn.classList.add(type==='cash'?'active-cash':'active-check');
 };
 
-window._savePay = function(monthKey, payKey){
+window._savePay = async function(monthKey, payKey){
   const type   = window._selectedType[payKey];
   const date   = document.getElementById(`date_${payKey}`)?.value;
   const amount = parseFloat(document.getElementById(`amt_${payKey}`)?.value)||0;
   if(!type){ alert('กรุณาเลือกประเภทการชำระ (เงินสด/เช็ค)'); return; }
   if(!date){ alert('กรุณาเลือกวันที่'); return; }
+
+  // build description: ชื่อลูกค้า + ช่วงวัน
+  const [custKey, roundId] = payKey.split('_');
+  const cust = BILL_CUSTOMERS.find(c=>c.key===custKey);
+  const round = ROUNDS.find(r=>r.id===roundId);
+  const [yr,mo] = monthKey.split('-').map(Number);
+  const endDay = roundId==='r3' ? daysInMonth(yr, mo-1) : round.end;
+  function fmtD(d){ return `${d}/${mo}/${(yr+543).toString().slice(-2)}`; }
+  const desc = `${cust?cust.name:custKey} ${round?round.start:''}-${fmtD(endDay)}`;
+
+  // push to ledger
+  const ledgerRef = ref(ledgerDb,'entries');
+  const newEntry = await push(ledgerRef, {
+    date, desc, type:'income',
+    method: type==='cash'?'cash':'check',
+    amount, createdAt: Date.now()
+  });
+
+  // save payment with ledger ID
   const path = `payments/${monthKey}/${payKey}`;
-  set(ref(db, path), { paid:true, type, date, amount })
-    .then(()=>{ delete window._selectedType[payKey]; })
-    .catch(e=>alert('บันทึกไม่ได้: '+e.message));
+  await set(ref(db, path), { paid:true, type, date, amount, ledgerId: newEntry.key });
+  delete window._selectedType[payKey];
 };
 
-window._editPay = function(monthKey, payKey){
+window._editPay = async function(monthKey, payKey){
   const path = `payments/${monthKey}/${payKey}`;
   if(!confirm('ต้องการแก้ไขการชำระนี้?')) return;
+  // get ledger ID before deleting
+  const payMonth = (payData[monthKey])||{};
+  const payInfo = payMonth[payKey]||{};
+  if(payInfo.ledgerId){
+    await remove(ref(ledgerDb, `entries/${payInfo.ledgerId}`));
+  }
   set(ref(db, path), null);
 };
 

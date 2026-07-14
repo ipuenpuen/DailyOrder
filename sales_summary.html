@@ -748,7 +748,7 @@ function pmUpdateSummary(){
   let total=0,paid=0,unpaid=0;
   weeks.forEach(w=>{
     const amt=pmWeekBaht(w.start,w.end);
-    const isPaid=!!(pmPayData[w.start]);
+    const isPaid=!!(pmPayData[w.start] && (pmPayData[w.start]===true || pmPayData[w.start].paid));
     total+=amt;
     isPaid?paid+=amt:unpaid+=amt;
   });
@@ -766,9 +766,17 @@ function pmRender(){
   if(container.dataset.year===String(adYear)){
     container.querySelectorAll('.pm-status-btn').forEach(btn=>{
       const startKey=btn.dataset.start;
-      const isPaid=!!(pmPayData[startKey]);
+      const p=pmPayData[startKey];
+      const isPaid=!!(p && (p===true || p.paid));
       btn.classList.toggle('paid',isPaid);
       btn.textContent=isPaid?'✓ ชำระแล้ว':'! ค้างชำระ';
+    });
+    // update unpaid labels per month
+    container.querySelectorAll('.pm-month').forEach(card=>{
+      const btns=card.querySelectorAll('.pm-status-btn');
+      const unpaid=[...btns].filter(b=>!b.classList.contains('paid')).length;
+      const label=card.querySelector('.pm-unpaid-label');
+      if(label) label.textContent=unpaid>0?unpaid+' รอบค้าง':'ชำระครบ';
     });
     pmUpdateSummary();
     return;
@@ -788,7 +796,7 @@ function pmRender(){
   Object.keys(groups).sort((a,b)=>a-b).forEach(mKey=>{
     const mNum=Number(mKey), list=groups[mKey];
     const monthTotal=list.reduce((s,w)=>s+pmWeekBaht(w.start,w.end),0);
-    const unpaidCount=list.filter(w=>!pmPayData[w.start]).length;
+    const unpaidCount=list.filter(w=>!(pmPayData[w.start] && (pmPayData[w.start]===true || pmPayData[w.start].paid))).length;
 
     const card=document.createElement('div');
     card.className='pm-month';
@@ -813,7 +821,7 @@ function pmRender(){
 
     list.forEach((w,i)=>{
       const amt=pmWeekBaht(w.start,w.end);
-      const isPaid=!!(pmPayData[w.start]);
+      const isPaid=!!(pmPayData[w.start] && (pmPayData[w.start]===true || pmPayData[w.start].paid));
       const row=document.createElement('div');
       row.className='pm-week-row';
       row.innerHTML=`
@@ -830,7 +838,46 @@ function pmRender(){
         let payDb2;
         try{ payDb2=firebase.app('payApp').database(); }
         catch(err){ return; }
-        payDb2.ref(`tum_payments/${startKey}`).set(nowPaid||null);
+
+        let ledgerDb;
+        try{ ledgerDb=firebase.app('ledgerApp').database(); }
+        catch(err){
+          ledgerDb=firebase.initializeApp({
+            apiKey:"AIzaSyBPQOSf7z7x-xAoyMWHHzS17jsqaHz8f6M",
+            databaseURL:"https://moneydaily-274a7-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId:"moneydaily-274a7"
+          },'ledgerApp').database();
+        }
+
+        if(nowPaid){
+          // mark paid + push to ledger + save ledger entry ID
+          const week=weeks.find(w=>w.start===startKey);
+          const amt=week?pmWeekBaht(week.start,week.end):0;
+          const today=new Date().toISOString().slice(0,10);
+          function shortThDate(iso){
+            const[y,m,d]=iso.split('-').map(Number);
+            return `${d}/${m}/${(y+543).toString().slice(-2)}`;
+          }
+          const rangeLabel=week?`${week.start.split('-')[2]}-${shortThDate(week.end)}`:startKey;
+          const desc=`ตั้ม ${rangeLabel}`;
+          const newRef=ledgerDb.ref('entries').push();
+          newRef.set({
+            date: today, desc: desc,
+            type: 'income', method: 'cash',
+            amount: amt, createdAt: Date.now()
+          }).then(()=>{
+            // save paid=true + ledger entry ID
+            payDb2.ref(`tum_payments/${startKey}`).set({paid:true, ledgerId:newRef.key});
+          });
+        } else {
+          // unpay: delete ledger entry if exists
+          const prevData=pmPayData[startKey];
+          const ledgerId=prevData && typeof prevData==='object' ? prevData.ledgerId : null;
+          if(ledgerId){
+            ledgerDb.ref(`entries/${ledgerId}`).remove();
+          }
+          payDb2.ref(`tum_payments/${startKey}`).set(null);
+        }
       });
 
       body.appendChild(row);
