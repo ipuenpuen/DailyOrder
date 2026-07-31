@@ -40,6 +40,7 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 .status-badge{margin-left:auto;font-size:.65rem;font-weight:700;padding:.18rem .5rem;border-radius:5px;}
 .status-unpaid{background:var(--red-light);color:var(--red);}
 .status-paid{background:var(--green-light);color:var(--green);}
+.status-pending{background:#E2E8F0;color:#64748B;}
 .status-partial{background:var(--orange-light);color:var(--orange);}
 
 /* payment form */
@@ -188,13 +189,20 @@ function renderAll(){
       const payKey  = `${cust.key}_${round.id}`;
       const payInfo = payMonth[payKey]||{};
       const isPaid  = !!payInfo.paid;
-      const pType   = payInfo.type||'';  // 'cash' or 'check'
+      const pType   = payInfo.type||'';
       const pDate   = payInfo.date||'';
       const pAmount = payInfo.amount!=null ? payInfo.amount : baht;
 
+      // check if round end date has passed
+      const roundEndDate = new Date(viewYear, viewMonth, endDay);
+      const todayDate = new Date(); todayDate.setHours(0,0,0,0);
+      const isPending = !isPaid && roundEndDate >= todayDate;
+
       const statusBadge = isPaid
         ? `<span class="status-badge status-paid">จ่ายแล้ว</span>`
-        : `<span class="status-badge status-unpaid">ค้างชำระ</span>`;
+        : isPending
+          ? `<span class="status-badge status-pending">รอตัดบิล</span>`
+          : `<span class="status-badge status-unpaid">ค้างชำระ</span>`;
 
       const paidInfoHTML = isPaid ? `
         <div class="paid-info">
@@ -202,7 +210,8 @@ function renderAll(){
           <span>${fmtDate(pDate)}</span>
           <span style="font-family:'JetBrains Mono',monospace;font-weight:600;">${fmtNum(pAmount)} บาท</span>
           <button class="btn-edit-pay" onclick="window._editPay('${monthKey}','${payKey}')">แก้ไข</button>
-        </div>` : `
+        </div>` : isPending ? `
+        <div style="font-size:.72rem;color:var(--muted);opacity:.8;">ครบวันที่ ${endDay}/${viewMonth+1}/${viewYear+543}</div>` : `
         <div class="pay-form" id="form_${payKey}">
           <div class="pay-type-grp">
             <button class="pay-type-btn" id="btn_cash_${payKey}" onclick="window._setType('${payKey}','cash')">เงินสด</button>
