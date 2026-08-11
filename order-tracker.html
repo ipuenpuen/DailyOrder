@@ -59,7 +59,7 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 .txn-bar-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
 .btn-reset-retail{font-size:.65rem;color:var(--muted);background:none;border:1px solid var(--rule);border-radius:5px;padding:.12rem .45rem;cursor:pointer;font-family:'Sarabun',sans-serif;transition:color .15s,border-color .15s;}
 .btn-reset-retail:hover{color:#c0392b;border-color:#c0392b;}
-.txn-scroll{max-height:320px;overflow-y:auto;}
+.txn-scroll{max-height:195px;overflow-y:auto;}
 .txn-day-header{display:flex;align-items:center;justify-content:space-between;padding:.35rem .85rem;background:var(--bg);border-bottom:1px solid var(--rule);}
 .txn-day-label{font-size:.63rem;font-weight:700;color:var(--muted);letter-spacing:.05em;}
 .txn-day-total{font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:600;color:var(--ink);}
@@ -109,6 +109,8 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 .row label{flex:1;font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:.28rem;}
 .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
 .num-input{width:76px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:.83rem;font-weight:600;padding:.28rem .46rem;border:1.5px solid var(--rule);border-radius:7px;background:var(--bg);color:var(--ink);outline:none;transition:border-color .15s;}
+.num-input::-webkit-outer-spin-button,.num-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.num-input{-moz-appearance:textfield;}
 .unit-lbl{font-size:.64rem;color:var(--muted);width:18px;flex-shrink:0;}
 .tank-chip{margin-top:.55rem;border-radius:8px;padding:.38rem .6rem;font-size:.68rem;display:flex;align-items:baseline;gap:.38rem;flex-wrap:wrap;}
 .tank-chip .tc-eq{opacity:.75;}
@@ -325,8 +327,7 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
   </div>
 
   <div class="save-bar" style="margin-top:.85rem;">
-    <button class="btn btn-save" onclick="saveEntry()">💾 บันทึก</button>
-    <button class="btn btn-clear" onclick="clearInputs()">ล้างข้อมูล</button>
+
     <button class="btn" style="background:#2C3E55;color:#fff;" onclick="openBillModal()">🧾 ตั๋วตัดบัญชี</button>
     <button class="btn" style="background:#27AE60;color:#fff;" onclick="openSummaryModal()">📊 สรุปยอดรายเดือน</button>
   </div>
@@ -336,7 +337,7 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
     <div class="history-scroll-wrap">
       <table><thead id="tbl-head"></thead><tbody id="history-body"></tbody></table>
     </div>
-    <div class="empty" id="empty-msg">ยังไม่มีข้อมูล — กรอกแล้วกด บันทึก</div>
+    <div class="empty" id="empty-msg">ยังไม่มีข้อมูล — กรอกแล้วเลื่อนออกเพื่อบันทึกอัตโนมัติ</div>
   </div>
 
   <!-- AUDIT LOG -->
@@ -399,7 +400,28 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
       <div style="display:flex;flex-direction:column;gap:.7rem;">
         <div>
           <label style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">ลูกค้า</label>
-          <select id="bill-cust" style="width:100%;margin-top:.3rem;padding:.5rem .7rem;border:1.5px solid var(--rule);border-radius:8px;font-family:'Sarabun',sans-serif;font-size:.95rem;background:var(--bg);color:var(--ink);outline:none;"></select>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.3rem;">
+            <select id="bill-cust" onchange="onBillCustChange()" style="flex:1;padding:.5rem .7rem;border:1.5px solid var(--rule);border-radius:8px;font-family:'Sarabun',sans-serif;font-size:.95rem;background:var(--bg);color:var(--ink);outline:none;"></select>
+            <button onclick="openEditPricePopup()" title="แก้ราคา" style="padding:.45rem .6rem;background:var(--paper);border:1.5px solid var(--rule);border-radius:8px;font-size:1rem;cursor:pointer;color:var(--muted);white-space:nowrap;">✏️</button>
+          </div>
+          <div id="bill-price-display" style="margin-top:.35rem;font-size:.82rem;color:var(--muted);"></div>
+        </div>
+
+        <!-- Edit Price Popup -->
+        <div id="edit-price-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:500;display:none;align-items:center;justify-content:center;">
+          <div style="background:var(--bg);border-radius:14px;padding:1.3rem 1.4rem;width:280px;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;">
+              <span style="font-size:.95rem;font-weight:700;" id="edit-price-title">แก้ราคา</span>
+              <button onclick="closeEditPricePopup()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted);">✕</button>
+            </div>
+            <label style="font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;">ราคา (บาท/กก.)</label>
+            <input id="edit-price-input" type="number" min="1" step="0.5"
+              style="width:100%;margin-top:.3rem;padding:.55rem .7rem;border:1.5px solid var(--rule);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:1.1rem;background:var(--bg);color:var(--ink);outline:none;"/>
+            <div style="display:flex;gap:.6rem;margin-top:.9rem;">
+              <button onclick="saveEditPrice()" style="flex:1;padding:.6rem;background:var(--accent);color:#fff;border:none;border-radius:9px;font-family:'Sarabun',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;">💾 บันทึก</button>
+              <button onclick="closeEditPricePopup()" style="padding:.6rem 1rem;background:var(--paper);color:var(--muted);border:1px solid var(--rule);border-radius:9px;font-family:'Sarabun',sans-serif;font-size:.9rem;cursor:pointer;">ยกเลิก</button>
+            </div>
+          </div>
         </div>
         <div style="display:flex;gap:.7rem;">
           <div style="flex:1;">
@@ -882,11 +904,59 @@ window.shiftDay=function(delta){
 }
 window.onDatePick=function(val){if(!val)return; currentDate=val; renderDateDisplay(); loadIntoInputs(); renderRetail();}
 
+let _autoSaveTimer=null;
+function autoSave(){
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer=setTimeout(()=>{
+    const entry={};let hasData=false;
+    CUSTOMERS.forEach(c=>{
+      if(c.type==='kg'){const v=getNum(c.key);entry[c.key]=v;if(v)hasData=true;}
+      else (c.fields||[]).forEach(f=>{const v=getNum(c.key+'_'+f.id);entry[c.key+'_'+f.id]=v;if(v)hasData=true;});
+    });
+    const muayChk=document.getElementById('muay_other_paid');
+    if(muayChk) entry['muay_other_paid']=muayChk.checked;
+    const pearnChk=document.getElementById('pearn_baan_paid');
+    if(pearnChk) entry['pearn_baan_paid']=pearnChk.checked;
+    const chaumMaleChk=document.getElementById('chaum_male_paid');
+    if(chaumMaleChk) entry['chaum_male_paid']=chaumMaleChk.checked;
+    const chaumFemaleChk=document.getElementById('chaum_female_paid');
+    if(chaumFemaleChk) entry['chaum_female_paid']=chaumFemaleChk.checked;
+    if(!hasData && !records[currentDate]) return; // ไม่มีข้อมูลเลย ไม่ต้องบันทึก
+    const prev=records[currentDate]||{};
+    // audit log เฉพาะกรณีแก้ไข
+    const isEdit=!!records[currentDate];
+    if(isEdit){
+      const changes=[];
+      CUSTOMERS.forEach(c=>{
+        const getVal=(r)=>{
+          if(c.type==='kg') return r[c.key]||0;
+          if(c.type==='multi-kg') return (c.fields||[]).reduce((s,f)=>s+(r[c.key+'_'+f.id]||0),0);
+          return (c.fields||[]).reduce((s,f)=>s+(r[c.key+'_'+f.id]||0),0)*30;
+        };
+        const before=getVal(prev), after=getVal(entry);
+        if(before!==after){
+          const changeType=before===0?'new':after===0?'del':'edit';
+          changes.push({name:c.name,before:fmtKg(before)+' กก.',after:fmtKg(after)+' กก.',changeType});
+        }
+      });
+      if(changes.length){
+        get(ref(db,'auditlog')).then(snap=>{
+          const log=snap.val()||{};
+          log[Date.now().toString()]={ts:Date.now(),date:currentDate,type:'edit',changes};
+          saveAuditLog(log);
+        });
+      }
+    }
+    records[currentDate]=entry; saveWS();
+    showToast((isEdit?'✏️ บันทึกอัตโนมัติ':'✅ บันทึกอัตโนมัติ')+' เรียบร้อย');
+  }, 600);
+}
+
 function applyFocusStyles(){
   document.querySelectorAll('#cards-container .card').forEach((card,i)=>{
     if(i<CUSTOMERS.length) card.querySelectorAll('.num-input').forEach(inp=>{
       inp.addEventListener('focus',()=>{inp.style.borderColor=CUSTOMERS[i].color;});
-      inp.addEventListener('blur',()=>{inp.style.borderColor='';});
+      inp.addEventListener('blur',()=>{inp.style.borderColor=''; autoSave();});
     });
   });
 }
@@ -954,17 +1024,82 @@ const BILL_CUSTOMERS=[
   {key:'muay',    name:'เจ้หมวย',   price:45},
 ];
 
-window.openBillModal=function(){
-  const sel=document.getElementById('bill-cust');
-  sel.innerHTML=BILL_CUSTOMERS.map(c=>`<option value="${c.key}">${c.name} (${c.price} บ./กก.)</option>`).join('');
+window.openBillModal=async function(){
+  // โหลดราคาจาก Firebase ก่อน
+  await loadPricesFromFirebase();
+  renderBillCustSelect();
   const today=todayStr();
   const [y,m]=today.split('-');
   document.getElementById('bill-from').value=`${y}-${m}-01`;
   document.getElementById('bill-to').value=today;
   document.getElementById('bill-modal').style.display='block';
+  updatePriceDisplay();
 }
 window.closeBillModal=function(){
   document.getElementById('bill-modal').style.display='none';
+}
+
+function renderBillCustSelect(){
+  const sel=document.getElementById('bill-cust');
+  sel.innerHTML=BILL_CUSTOMERS.map(c=>`<option value="${c.key}">${c.name} (${c.price} บ./กก.)</option>`).join('');
+}
+
+window.onBillCustChange=function(){
+  updatePriceDisplay();
+}
+
+function updatePriceDisplay(){
+  const key=document.getElementById('bill-cust').value;
+  const c=BILL_CUSTOMERS.find(x=>x.key===key);
+  const el=document.getElementById('bill-price-display');
+  if(c) el.innerHTML=`💰 ราคาปัจจุบัน: <b>${c.price} บาท/กก.</b>`;
+}
+
+window.openEditPricePopup=function(){
+  const key=document.getElementById('bill-cust').value;
+  const c=BILL_CUSTOMERS.find(x=>x.key===key);
+  if(!c) return;
+  document.getElementById('edit-price-title').textContent=`แก้ราคา — ${c.name}`;
+  document.getElementById('edit-price-input').value=c.price;
+  document.getElementById('edit-price-popup').style.display='flex';
+}
+
+window.closeEditPricePopup=function(){
+  document.getElementById('edit-price-popup').style.display='none';
+}
+
+window.saveEditPrice=async function(){
+  const key=document.getElementById('bill-cust').value;
+  const newPrice=parseFloat(document.getElementById('edit-price-input').value);
+  if(!key||isNaN(newPrice)||newPrice<=0){showToast('⚠️ ราคาไม่ถูกต้อง');return;}
+  const c=BILL_CUSTOMERS.find(x=>x.key===key);
+  if(!c) return;
+  try{
+    await set(ref(db,`bill_prices/${key}`), newPrice);
+    c.price=newPrice;
+    renderBillCustSelect();
+    // ตั้ง select กลับไปที่ลูกค้าเดิม
+    document.getElementById('bill-cust').value=key;
+    updatePriceDisplay();
+    closeEditPricePopup();
+    showToast(`✅ บันทึกราคา ${c.name} = ${newPrice} บ./กก.`);
+  } catch(e){
+    showToast('❌ บันทึกไม่สำเร็จ: '+e.message);
+  }
+}
+
+async function loadPricesFromFirebase(){
+  try{
+    const snap=await get(ref(db,'bill_prices'));
+    if(snap.exists()){
+      const data=snap.val();
+      BILL_CUSTOMERS.forEach(c=>{
+        if(data[c.key]!==undefined) c.price=data[c.key];
+      });
+    }
+  } catch(e){
+    console.warn('โหลดราคาจาก Firebase ไม่ได้ ใช้ค่า default',e);
+  }
 }
 
 window.previewBill=function(){
