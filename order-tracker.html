@@ -261,6 +261,7 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
     <button id="maintab-tum" onclick="switchMainTab('tum')" style="flex:1;padding:.7rem .5rem;border:none;background:none;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;">📊 ยอดทอดมันตั้ม</button>
     <button id="maintab-ledger" onclick="switchMainTab('ledger')" style="flex:1;padding:.7rem .5rem;border:none;background:none;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;">📒 บัญชีรายรับ-จ่าย</button>
     <button id="maintab-pay" onclick="switchMainTab('pay')" style="flex:1;padding:.7rem .5rem;border:none;background:none;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;">💰 ติดตามชำระ</button>
+    <button id="maintab-rawmat" onclick="switchMainTab('rawmat')" style="flex:1;padding:.7rem .5rem;border:none;background:none;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;">🧾 ค่าวัตถุดิบ</button>
   </div>
 </div>
 
@@ -472,11 +473,15 @@ td:first-child{text-align:left;font-family:'Sarabun',sans-serif;font-size:.74rem
   <iframe id="pay-iframe" src="payment_tracker.html" title="ติดตามชำระ" style="width:100%;height:100%;border:none;display:block;"></iframe>
 </div>
 
+<div id="maintab-page-rawmat" style="display:none;height:calc(100vh - 48px);">
+  <iframe id="rawmat-iframe" src="rawmat.html" title="ค่าวัตถุดิบ" style="width:100%;height:100%;border:none;display:block;"></iframe>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 window.switchMainTab=function(tab){
-  ['order','tum','ledger','pay'].forEach(t=>{
+  ['order','tum','ledger','pay','rawmat'].forEach(t=>{
     document.getElementById('maintab-page-'+t).style.display='none';
     const b=document.getElementById('maintab-'+t);
     b.style.color='var(--muted)'; b.style.borderBottomColor='transparent';
@@ -497,6 +502,9 @@ window.switchMainTab=function(tab){
   } else if(tab==='pay'){
     const pframe=document.getElementById('pay-iframe');
     pframe.src='payment_tracker.html?t='+Date.now();
+  } else if(tab==='rawmat'){
+    const rframe=document.getElementById('rawmat-iframe');
+    rframe.src='rawmat.html?t='+Date.now();
   }
 }
 </script>
@@ -666,7 +674,7 @@ function buildCards(){
               <span class="unit-lbl">กก.</span>
             </div>
             <label style="display:flex;align-items:center;gap:.25rem;font-size:.7rem;color:var(--muted);cursor:pointer;padding-left:2.2rem;">
-              <input type="checkbox" id="chaum_${f.id}_paid" onchange="updateSummary()" style="width:13px;height:13px;cursor:pointer;accent-color:var(--accent);"/> จ่ายแล้ว
+              <input type="checkbox" id="chaum_${f.id}_paid" onchange="autoSave();updateSummary();" style="width:13px;height:13px;cursor:pointer;accent-color:var(--accent);"/> จ่ายแล้ว
             </label>
           </div>`).join('')}
         </div>`;
@@ -674,7 +682,7 @@ function buildCards(){
         b=(c.fields||[]).map(f=>{
           const hasPaid = (c.key==='muay' && f.id==='other') || (c.key==='pearn' && f.id==='baan');
           const chkId = c.key==='muay' ? 'muay_other_paid' : 'pearn_baan_paid';
-          const paidChk = hasPaid ? `<div style="display:flex;justify-content:flex-end;margin-top:.3rem;margin-bottom:.2rem;"><label style="display:flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" id="${chkId}" onchange="updateSummary()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);"/> จ่ายแล้ว</label></div>` : '';
+          const paidChk = hasPaid ? `<div style="display:flex;justify-content:flex-end;margin-top:.3rem;margin-bottom:.2rem;"><label style="display:flex;align-items:center;gap:.35rem;font-size:.75rem;color:var(--muted);cursor:pointer;"><input type="checkbox" id="${chkId}" onchange="autoSave();updateSummary();" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);"/> จ่ายแล้ว</label></div>` : '';
           return `<div class="row"><label>${f.label}</label><input class="num-input" type="number" id="${c.key}_${f.id}" min="0" step="0.1" placeholder="0" onfocus="this.select()" oninput="updateSummary()"/><span class="unit-lbl">กก.</span></div>${paidChk}`;
         }).join('');
       }
@@ -905,7 +913,7 @@ window.shiftDay=function(delta){
 window.onDatePick=function(val){if(!val)return; currentDate=val; renderDateDisplay(); loadIntoInputs(); renderRetail();}
 
 let _autoSaveTimer=null;
-function autoSave(){
+window.autoSave=function autoSave(){
   clearTimeout(_autoSaveTimer);
   _autoSaveTimer=setTimeout(()=>{
     const entry={};let hasData=false;
@@ -921,7 +929,12 @@ function autoSave(){
     if(chaumMaleChk) entry['chaum_male_paid']=chaumMaleChk.checked;
     const chaumFemaleChk=document.getElementById('chaum_female_paid');
     if(chaumFemaleChk) entry['chaum_female_paid']=chaumFemaleChk.checked;
-    if(!hasData && !records[currentDate]) return; // ไม่มีข้อมูลเลย ไม่ต้องบันทึก
+    // นับ checkbox ว่าเป็น "มีข้อมูล" ด้วย
+    if(muayChk?.checked||pearnChk?.checked||chaumMaleChk?.checked||chaumFemaleChk?.checked) hasData=true;
+    console.log('[autoSave] hasData=',hasData,'records[currentDate]=',!!records[currentDate],
+      'muay=',muayChk?.checked,'pearn=',pearnChk?.checked,
+      'chaumM=',chaumMaleChk?.checked,'chaumF=',chaumFemaleChk?.checked);
+    if(!hasData && !records[currentDate]) { console.log('[autoSave] skipped'); return; }
     const prev=records[currentDate]||{};
     // audit log เฉพาะกรณีแก้ไข
     const isEdit=!!records[currentDate];
@@ -1321,5 +1334,6 @@ window.addEventListener('DOMContentLoaded',()=>{
   });
 });
 </script>
+
 </body>
 </html>
