@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ค่าวัตถุดิบ</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#F0F4F8;--paper:#fff;--ink:#1E2A38;--muted:#6B7A8D;
+  --rule:#D4DCE6;--accent:#3B7DD8;--accent-light:#E8F0FB;
+  --green:#27AE60;--green-light:#EFF8F2;
+  --red:#C0392B;--red-light:#FDF0F0;
+  --orange:#E67E22;--orange-light:#FEF5EC;
+}
+body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-height:100vh;padding:1rem 1rem 5rem;}
+.page{max-width:680px;margin:0 auto;}
+
+.section-label{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.55rem;}
+
+.add-card{background:var(--paper);border:1px solid var(--rule);border-radius:14px;padding:1rem 1.1rem;margin-bottom:1rem;}
+.field{display:flex;flex-direction:column;gap:.22rem;margin-bottom:.7rem;}
+.field:last-child{margin-bottom:0;}
+.field label{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.field input,.field select{
+  width:100%;padding:.46rem .6rem;border:1.5px solid var(--rule);border-radius:8px;
+  font-family:'Sarabun',sans-serif;font-size:.9rem;background:var(--paper);color:var(--ink);
+  outline:none;transition:border-color .15s;
+}
+.field input[type="date"]{font-family:'JetBrains Mono',monospace;font-size:.82rem;}
+.field input:focus,.field select:focus{border-color:var(--accent);}
+.field input[type=number]{font-family:'JetBrains Mono',monospace;-moz-appearance:textfield;}
+.field input[type=number]::-webkit-outer-spin-button,
+.field input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;}
+.add-btn{width:100%;padding:.62rem;background:var(--accent);color:#fff;border:none;border-radius:9px;font-family:'Sarabun',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;margin-top:.2rem;transition:opacity .15s;}
+.add-btn:hover{opacity:.88;}
+
+.filter-row{display:flex;gap:.45rem;margin-bottom:.75rem;flex-wrap:wrap;}
+.chip{padding:.26rem .65rem;border:1.5px solid var(--rule);border-radius:99px;font-size:.73rem;font-weight:700;color:var(--muted);background:var(--paper);cursor:pointer;font-family:'Sarabun',sans-serif;transition:all .15s;}
+.chip.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+.list-wrap{background:var(--paper);border:1px solid var(--rule);border-radius:14px;overflow:hidden;}
+
+.empty{text-align:center;color:var(--muted);padding:2rem;font-size:.84rem;}
+.badge{display:inline-block;padding:.1rem .45rem;border-radius:99px;font-size:.62rem;font-weight:700;}
+.badge-overdue{background:var(--red-light);color:var(--red);}
+.badge-pending{background:var(--orange-light);color:var(--orange);}
+.badge-paid{background:var(--green-light);color:var(--green);}
+.badge-nodate{background:#E2E8F0;color:#64748B;}
+
+.ledger-badge{font-size:.6rem;font-weight:700;padding:.06rem .32rem;border-radius:4px;background:#E8F0FB;color:#3B7DD8;}
+
+.btn-pay{padding:.25rem .55rem;border:1.5px solid var(--accent);background:none;color:var(--accent);font-family:'Sarabun',sans-serif;font-size:.7rem;font-weight:700;border-radius:7px;cursor:pointer;transition:all .15s;}
+.btn-pay:hover{background:var(--accent-light);}
+.btn-pay.done{border-color:var(--green);background:var(--green-light);color:var(--green);cursor:default;}
+.btn-edit{padding:.25rem .55rem;border:1.5px solid var(--rule);background:none;color:var(--muted);font-family:'Sarabun',sans-serif;font-size:.7rem;font-weight:700;border-radius:7px;cursor:pointer;transition:all .15s;}
+.btn-edit:hover{border-color:var(--accent);color:var(--accent);}
+.btn-del{padding:.25rem .55rem;border:1.5px solid var(--red-light);background:none;color:var(--red);font-family:'Sarabun',sans-serif;font-size:.7rem;font-weight:700;border-radius:7px;cursor:pointer;transition:all .15s;}
+.btn-del:hover{background:var(--red-light);}
+.btn-paytype{padding:.25rem .55rem;border:1.5px solid var(--rule);background:none;color:var(--muted);font-family:'Sarabun',sans-serif;font-size:.7rem;font-weight:700;border-radius:7px;cursor:pointer;transition:all .15s;}
+.btn-paytype:hover{border-color:var(--accent);color:var(--accent);}
+.btn-paytype.pt-active-cash{border-color:var(--green);background:var(--green-light);color:var(--green);}
+.btn-paytype.pt-active-check{border-color:var(--accent);background:var(--accent-light);color:var(--accent);}
+
+/* pay type toggle in form */
+.paytype-row{display:flex;gap:.4rem;margin-top:.1rem;}
+.paytype-btn{flex:1;padding:.44rem .5rem;border:1.5px solid var(--rule);background:var(--bg);color:var(--muted);font-family:'Sarabun',sans-serif;font-size:.82rem;font-weight:700;border-radius:8px;cursor:pointer;transition:all .15s;text-align:center;}
+.paytype-btn:hover{border-color:var(--accent);color:var(--accent);}
+.paytype-btn.active-cash{border-color:var(--green);background:var(--green-light);color:var(--green);}
+.paytype-btn.active-check{border-color:var(--accent);background:var(--accent-light);color:var(--accent);}
+
+/* month section */
+.month-section{margin-bottom:1.5rem;}
+.month-title{font-size:.95rem;font-weight:700;color:var(--ink);margin-bottom:.5rem;padding:.1rem 0;}
+.list-wrap{background:var(--paper);border:1px solid var(--rule);border-radius:14px;overflow:hidden;}
+
+/* table header */
+.tbl-head{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.4fr) .9fr 1fr 9rem;gap:.5rem;padding:.4rem .9rem;background:var(--bg);border-bottom:1px solid var(--rule);font-size:.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+
+/* table data row */
+.item-row{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.4fr) .9fr 1fr 9rem;gap:.5rem;align-items:center;padding:.58rem .9rem;border-bottom:.5px solid var(--rule);}
+.item-row:last-child{border-bottom:none;}
+.item-row:hover{background:#f7f9fc;}
+
+.col-name{}
+.item-name{font-size:.85rem;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-period{font-size:.72rem;color:var(--muted);margin-top:.05rem;}
+.col-period{font-size:.75rem;color:var(--ink);}
+.col-amount{font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:700;color:var(--ink);text-align:right;}
+.col-due{font-size:.75rem;color:var(--muted);}
+.col-due .paid-date{color:var(--green);font-weight:700;}
+.col-due .overdue-date{color:var(--red);}
+.col-btns{display:flex;gap:.25rem;justify-content:flex-end;}
+
+.toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:.5rem 1.1rem;border-radius:99px;font-size:.8rem;font-weight:600;transition:transform .25s;z-index:999;pointer-events:none;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:500;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--paper);border-radius:14px;padding:1.25rem 1.35rem;width:min(380px,92vw);box-shadow:0 8px 32px rgba(0,0,0,.18);}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;}
+.modal-title{font-size:.93rem;font-weight:700;}
+.modal-close{background:none;border:none;font-size:1.05rem;cursor:pointer;color:var(--muted);}
+.modal-fields{display:flex;flex-direction:column;gap:.6rem;}
+.modal-fields .field{margin-bottom:0;}
+.modal-btns{display:flex;gap:.55rem;margin-top:.85rem;}
+.modal-save{flex:1;padding:.58rem;background:var(--accent);color:#fff;border:none;border-radius:9px;font-family:'Sarabun',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;}
+.modal-cancel{padding:.58rem 1rem;background:var(--bg);color:var(--muted);border:1px solid var(--rule);border-radius:9px;font-family:'Sarabun',sans-serif;font-size:.88rem;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="section-label">เพิ่มรายการ</div>
+  <div class="add-card">
+    <div class="field">
+      <label>ชื่อ / รายการ</label>
+      <input id="rm-name" type="text" placeholder="เช่น ปลากราย, แป้ง, น้ำมัน"/>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>งวดวันที่เริ่ม</label>
+        <input id="rm-from" type="date"/>
+      </div>
+      <div class="field">
+        <label>งวดวันที่สิ้นสุด</label>
+        <input id="rm-to" type="date"/>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>จำนวนเงิน (บาท)</label>
+        <input id="rm-amount" type="number" placeholder="0" min="0"/>
+      </div>
+      <div class="field">
+        <label>กำหนดจ่าย</label>
+        <input id="rm-due" type="date"/>
+      </div>
+    </div>
+    <div class="field">
+      <label>ประเภทการจ่าย</label>
+      <div class="paytype-row">
+        <button class="paytype-btn" id="add-cash" onclick="toggleAddType('cash')">เงินสด</button>
+        <button class="paytype-btn" id="add-check" onclick="toggleAddType('check')">เช็ค</button>
+      </div>
+    </div>
+    <button class="add-btn" onclick="rawmatAdd()">+ เพิ่มรายการ</button>
+  </div>
+
+  <div class="filter-row">
+    <button class="chip active" onclick="setFilter('all')">ทั้งหมด</button>
+    <button class="chip" onclick="setFilter('pending')">รอจ่าย</button>
+    <button class="chip" onclick="setFilter('overdue')">เกินกำหนด</button>
+    <button class="chip" onclick="setFilter('nodate')">ยังไม่กำหนดวัน</button>
+    <button class="chip" onclick="setFilter('paid')">จ่ายแล้ว</button>
+  </div>
+
+  <div id="rm-list"></div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal" onclick="if(event.target===this)closeEdit()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-title">แก้ไขรายการ</span>
+      <button class="modal-close" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="modal-fields">
+      <div class="field">
+        <label>ชื่อ / รายการ</label>
+        <input id="e-name" type="text"/>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>งวดเริ่ม</label>
+          <input id="e-from" type="date"/>
+        </div>
+        <div class="field">
+          <label>งวดสิ้นสุด</label>
+          <input id="e-to" type="date"/>
+        </div>
+      </div>
+      <div class="field">
+        <label>จำนวนเงิน (บาท)</label>
+        <input id="e-amount" type="number" min="0"/>
+      </div>
+      <div class="field">
+        <label>กำหนดจ่าย</label>
+        <input id="e-due" type="date"/>
+      </div>
+      <div class="field">
+        <label>ประเภทการจ่าย</label>
+        <div class="paytype-row">
+          <button class="paytype-btn" id="edit-cash" onclick="toggleEditType('cash')">เงินสด</button>
+          <button class="paytype-btn" id="edit-check" onclick="toggleEditType('check')">เช็ค</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-save" onclick="saveEdit()">บันทึก</button>
+      <button class="modal-cancel" onclick="closeEdit()">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, set, push, update, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+// ── Firebase: rawmat (daily-order) ──
+const app = initializeApp({
+  apiKey: "AIzaSyATvjHe9WsHMERsCJ5Yh4j46WR6vZZ33nY",
+  authDomain: "daily-order-d9187.firebaseapp.com",
+  databaseURL: "https://daily-order-d9187-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "daily-order-d9187",
+  storageBucket: "daily-order-d9187.firebasestorage.app",
+  messagingSenderId: "1019686539563",
+  appId: "1:1019686539563:web:f7757d4da1d6896fff756e"
+}, 'rawmatApp');
+const db = getDatabase(app);
+
+// ── Firebase: ledger (moneydaily) ──
+const ledgerApp = initializeApp({
+  apiKey: "AIzaSyBPQOSf7z7x-xAoyMWHHzS17jsqaHz8f6M",
+  authDomain: "moneydaily-274a7.firebaseapp.com",
+  databaseURL: "https://moneydaily-274a7-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "moneydaily-274a7",
+  storageBucket: "moneydaily-274a7.firebasestorage.app",
+  messagingSenderId: "1027919985247",
+  appId: "1:1027919985247:web:c73e68dfc8b323901b79ea"
+}, 'ledgerApp');
+const ledgerDb = getDatabase(ledgerApp);
+
+// ── auto-post ถึงกำหนดจ่าย → ลงบัญชีรายจ่าย ──
+async function autoPostDue(items){
+  const today = new Date().toISOString().slice(0,10);
+  for(const [id, it] of Object.entries(items)){
+    if(!it.dueDate || it.ledgerPosted) continue;
+    if(it.dueDate > today) continue;
+    try{
+      const method = it.payType==='check' ? 'check' : 'cash';
+      const entryRef = push(ref(ledgerDb,'entries'));
+      await set(entryRef,{
+        date: it.dueDate,
+        desc: `${it.name}${it.periodFrom?` (${fmtDateTH(it.periodFrom)}${it.periodTo?'–'+fmtDateTH(it.periodTo):''})` : ''}`,
+        type: 'expense',
+        method,
+        amount: +it.amount,
+        createdAt: Date.now()
+      });
+      // อัพเดท rawmat: ledgerPosted + เก็บ entryId + ถ้าเช็คหรือเงินสด → mark paid อัตโนมัติ
+      const updates = { ledgerPosted: true, ledgerEntryId: entryRef.key };
+      if(!it.paidDate){
+        updates.paidDate = it.dueDate;
+      }
+      await update(ref(db,'rawmat/'+id), updates);
+    }catch(e){
+      console.error('auto-post ledger error:', e);
+    }
+  }
+}
+
+let rawItems = {};
+let curFilter = 'all';
+let editingId = null;
+
+const MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+function fmtDateTH(iso){
+  if(!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  return `${+d}/${+m}/${+y+543}`;
+}
+
+function getStatus(it){
+  if(it.paidDate) return 'paid';
+  if(!it.dueDate) return 'nodate';
+  return it.dueDate < new Date().toISOString().slice(0,10) ? 'overdue' : 'pending';
+}
+
+let _tt;
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+function render(){
+  document.querySelectorAll('.chip').forEach(c=>{
+    const m=c.getAttribute('onclick').match(/'([^']+)'/);
+    if(m) c.classList.toggle('active',m[1]===curFilter);
+  });
+
+  const entries=Object.entries(rawItems).filter(([,it])=>curFilter==='all'||getStatus(it)===curFilter);
+  if(!entries.length){
+    document.getElementById('rm-list').innerHTML='<div class="list-wrap"><div class="empty">ไม่มีรายการ</div></div>';
+    return;
+  }
+
+  const groups={};
+  entries.forEach(([id,it])=>{
+    const k=(it.periodFrom||it.createdAt||'').slice(0,7)||'ไม่ระบุ';
+    (groups[k]=groups[k]||[]).push([id,it]);
+  });
+
+  const html=Object.keys(groups).sort((a,b)=>b>a?1:-1).map(ym=>{
+    const [y,m]=ym.split('-');
+    const mLabel=ym==='ไม่ระบุ'?'ไม่ระบุเดือน':`${MONTHS[+m-1]} ${+y+543}`;
+    const rows=groups[ym]
+      .sort((a,b)=>(a[1].dueDate||'9999')>(b[1].dueDate||'9999')?1:-1)
+      .map(([id,it])=>{
+        const s=getStatus(it);
+        const bCls={overdue:'badge-overdue',pending:'badge-pending',paid:'badge-paid',nodate:'badge-nodate'}[s];
+        const bTxt={overdue:'เกินกำหนด',pending:'รอจ่าย',paid:'จ่ายแล้ว',nodate:'ยังไม่กำหนด'}[s];
+
+        const period=it.periodFrom
+          ?(it.periodTo?`${fmtDateTH(it.periodFrom)}–${fmtDateTH(it.periodTo)}`:fmtDateTH(it.periodFrom)):'—';
+
+        const payTypeLabel=it.payType==='check'?'เช็ค':it.payType==='cash'?'เงินสด':'';
+        const payTypeBadge=payTypeLabel
+          ?`<span class="badge" style="background:${it.payType==='check'?'var(--accent-light)':'var(--green-light)'};color:${it.payType==='check'?'var(--accent)':'var(--green)'};">${payTypeLabel}</span> `:'';
+        const ledgerBadge=it.ledgerPosted?`<span class="ledger-badge">📒</span> `:'';
+
+        let dueCol='—';
+        if(it.paidDate){
+          dueCol=`<span class="paid-date">${fmtDateTH(it.paidDate)}</span>`;
+        } else if(it.dueDate){
+          const cls=s==='overdue'?'overdue-date':'';
+          dueCol=`<span class="${cls}">${fmtDateTH(it.dueDate)}</span>`;
+        }
+
+        return `<div class="item-row">
+          <div class="col-name">
+            <div class="item-name">${it.name}</div>
+            <div><span class="badge ${bCls}">${bTxt}</span> ${payTypeBadge}${ledgerBadge}</div>
+          </div>
+          <div class="col-period">${period}</div>
+          <div class="col-amount">฿${(+it.amount).toLocaleString()}</div>
+          <div class="col-due">${dueCol}</div>
+          <div class="col-btns">
+            <button class="btn-edit" onclick="openEdit('${id}')">แก้ไข</button>
+            <button class="btn-del" onclick="delItem('${id}')">ลบ</button>
+          </div>
+        </div>`;
+      }).join('');
+    const header=`<div class="tbl-head"><div>ชื่อ</div><div>วันที่งวด</div><div style="text-align:right;">จำนวนเงิน</div><div>จ่ายวันที่</div><div></div></div>`;
+    return `<div class="month-section">
+      <div class="month-title">${mLabel}</div>
+      <div class="list-wrap">${header}${rows}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('rm-list').innerHTML=html;
+}
+
+window.setFilter=f=>{ curFilter=f; render(); };
+
+window.rawmatAdd=async function(){
+  const name=document.getElementById('rm-name').value.trim();
+  const from=document.getElementById('rm-from').value;
+  const to=document.getElementById('rm-to').value;
+  const amount=parseFloat(document.getElementById('rm-amount').value);
+  const due=document.getElementById('rm-due').value;
+  if(!name){ showToast('⚠️ กรุณากรอกชื่อรายการ'); return; }
+  if(!amount||amount<=0){ showToast('⚠️ กรุณากรอกจำนวนเงิน'); return; }
+  try{
+    await set(push(ref(db,'rawmat')),{
+      name,periodFrom:from,periodTo:to,amount,dueDate:due,
+      payType:addPayType,
+      paidDate:null,
+      createdAt:new Date().toISOString().slice(0,10)
+    });
+    document.getElementById('rm-name').value='';
+    document.getElementById('rm-from').value='';
+    document.getElementById('rm-to').value='';
+    document.getElementById('rm-amount').value='';
+    document.getElementById('rm-due').value='';
+    addPayType='';
+    document.getElementById('add-cash').className='paytype-btn';
+    document.getElementById('add-check').className='paytype-btn';
+    showToast('✅ เพิ่มรายการแล้ว');
+  }catch(e){ showToast('❌ '+e.message); }
+};
+
+// ── FORM PAY TYPE ──
+let addPayType = '';
+window.toggleAddType = function(type){
+  addPayType = addPayType===type ? '' : type;
+  document.getElementById('add-cash').className='paytype-btn'+(addPayType==='cash'?' active-cash':'');
+  document.getElementById('add-check').className='paytype-btn'+(addPayType==='check'?' active-check':'');
+};
+
+let editPayType = '';
+window.toggleEditType = function(type){
+  editPayType = editPayType===type ? '' : type;
+  document.getElementById('edit-cash').className='paytype-btn'+(editPayType==='cash'?' active-cash':'');
+  document.getElementById('edit-check').className='paytype-btn'+(editPayType==='check'?' active-check':'');
+};
+
+window.markPaid=async function(id){
+  const it=rawItems[id]; if(!it) return;
+  const today=new Date().toISOString().slice(0,10);
+  try{
+    const updates={paidDate:today};
+    // ลงบัญชีเฉพาะถ้ายังไม่เคยลง (เช็คถูก autoPostDue ลงไปแล้ว)
+    if(!it.ledgerPosted){
+      const method=it.payType==='check'?'check':'cash';
+      const entryRef=push(ref(ledgerDb,'entries'));
+      await set(entryRef,{
+        date: it.dueDate||today,
+        desc: `${it.name}${it.periodFrom?` (${fmtDateTH(it.periodFrom)}${it.periodTo?'–'+fmtDateTH(it.periodTo):''})` : ''}`,
+        type: 'expense',
+        method,
+        amount: +it.amount,
+        createdAt: Date.now()
+      });
+      updates.ledgerPosted=true;
+      updates.ledgerEntryId=entryRef.key;
+    }
+    await update(ref(db,'rawmat/'+id),updates);
+    showToast('✅ บันทึกการจ่ายแล้ว');
+  }catch(e){ showToast('❌ '+e.message); }
+};
+
+window.openEdit=function(id){
+  const it=rawItems[id]; if(!it) return;
+  editingId=id;
+  document.getElementById('e-name').value=it.name||'';
+  document.getElementById('e-from').value=it.periodFrom||'';
+  document.getElementById('e-to').value=it.periodTo||'';
+  document.getElementById('e-amount').value=it.amount||'';
+  document.getElementById('e-due').value=it.dueDate||'';
+  editPayType=it.payType||'';
+  document.getElementById('edit-cash').className='paytype-btn'+(editPayType==='cash'?' active-cash':'');
+  document.getElementById('edit-check').className='paytype-btn'+(editPayType==='check'?' active-check':'');
+  document.getElementById('edit-modal').classList.add('open');
+};
+
+window.closeEdit=function(){
+  document.getElementById('edit-modal').classList.remove('open');
+  editingId=null;
+};
+
+window.saveEdit=async function(){
+  if(!editingId) return;
+  const name=document.getElementById('e-name').value.trim();
+  const amount=parseFloat(document.getElementById('e-amount').value);
+  const newDue=document.getElementById('e-due').value;
+  if(!name){ showToast('⚠️ กรุณากรอกชื่อ'); return; }
+  if(!amount||amount<=0){ showToast('⚠️ กรุณากรอกจำนวนเงิน'); return; }
+  try{
+    const it = rawItems[editingId]||{};
+    const dueDateChanged = newDue !== (it.dueDate||'');
+    // ถ้าแก้ไข dueDate และเคยลงบัญชีแล้ว → ลบ entry เดิมออก + reset flag
+    if(dueDateChanged && it.ledgerPosted && it.ledgerEntryId){
+      try{ await set(ref(ledgerDb,'entries/'+it.ledgerEntryId), null); }catch(_){}
+    }
+    const updates = {
+      name,
+      periodFrom: document.getElementById('e-from').value,
+      periodTo: document.getElementById('e-to').value,
+      amount,
+      dueDate: newDue,
+      payType: editPayType
+    };
+    if(dueDateChanged && it.ledgerPosted){
+      updates.ledgerPosted = false;
+      updates.ledgerEntryId = null;
+      updates.paidDate = null;
+    }
+    await update(ref(db,'rawmat/'+editingId), updates);
+    closeEdit(); showToast('✅ บันทึกแล้ว');
+  }catch(e){ showToast('❌ '+e.message); }
+};
+
+window.delItem=async function(id){
+  if(!confirm('ลบรายการนี้?')) return;
+  try{
+    const it = rawItems[id]||{};
+    // ลบ ledger entry ถ้ามี
+    if(it.ledgerPosted && it.ledgerEntryId){
+      try{ await set(ref(ledgerDb,'entries/'+it.ledgerEntryId), null); }catch(_){}
+    }
+    await set(ref(db,'rawmat/'+id),null);
+    showToast('🗑 ลบแล้ว');
+  }catch(e){ showToast('❌ '+e.message); }
+};
+
+onValue(ref(db,'rawmat'),snap=>{
+  rawItems=snap.val()||{};
+  autoPostDue(rawItems);
+  render();
+});
+</script>
+</body>
+</html>
