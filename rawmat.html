@@ -209,7 +209,7 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, set, push, update, onValue, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import { getDatabase, ref, set, get, push, update, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 // ── Firebase: rawmat (daily-order) ──
 const app = initializeApp({
@@ -241,23 +241,18 @@ const _posting = new Set();
 async function autoPostDue(items){
   const today = new Date().toISOString().slice(0,10);
   for(const [id, it] of Object.entries(items)){
-    if(!it.dueDate || it.ledgerPosted || _posting.has(id)) continue;
-    if(it.dueDate > today) continue;
+    if(!it.dueDate || it.dueDate > today) continue;
+    if(_posting.has(id)) continue;
     _posting.add(id);
     try{
-      // Transaction: ถ้า ledgerPosted ยังเป็น false → set เป็น true แบบ atomic
-      // ถ้ามีคนอื่น (tab อื่น) set ไปก่อนแล้ว transaction จะ abort และไม่ post ซ้ำ
-      const itemRef = ref(db, 'rawmat/'+id);
-      let shouldPost = false;
-      await runTransaction(itemRef, (current) => {
-        if(current === null) return; // ไม่มีข้อมูล abort
-        if(current.ledgerPosted === true) return; // ลงไปแล้ว abort
-        shouldPost = true;
-        return { ...current, ledgerPosted: true };
-      });
-      if(!shouldPost){ _posting.delete(id); continue; }
+      // อ่านค่าล่าสุดจาก server โดยตรง ไม่ใช้ cache ใน memory
+      const snap = await get(ref(db,'rawmat/'+id+'/ledgerPosted'));
+      if(snap.val() === true){ _posting.delete(id); continue; }
 
-      // ถึงตรงนี้ได้ = เราเป็นคนแรกที่ post
+      // mark ก่อนเลย ป้องกัน onValue รอบถัดไปยิงซ้ำ
+      await update(ref(db,'rawmat/'+id),{ ledgerPosted: true });
+
+      // แล้วค่อย push ลง ledger
       const method = it.payType==='check' ? 'check' : 'cash';
       const entryRef = push(ref(ledgerDb,'entries'));
       await set(entryRef,{
@@ -268,10 +263,9 @@ async function autoPostDue(items){
         amount: +it.amount,
         createdAt: Date.now()
       });
-      // บันทึก entryId และ paidDate
       const updates = { ledgerEntryId: entryRef.key };
       if(!it.paidDate) updates.paidDate = it.dueDate;
-      await update(itemRef, updates);
+      await update(ref(db,'rawmat/'+id), updates);
     }catch(e){
       _posting.delete(id);
       console.error('auto-post error:', e);
