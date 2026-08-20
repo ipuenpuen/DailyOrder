@@ -250,9 +250,10 @@ async function autoPostDue(items){
       const itemRef = ref(db, 'rawmat/'+id);
       let shouldPost = false;
       await runTransaction(itemRef, (current) => {
-        if(!current || current.ledgerPosted) return; // abort — ลงไปแล้ว
+        if(current === null) return; // ไม่มีข้อมูล abort
+        if(current.ledgerPosted === true) return; // ลงไปแล้ว abort
         shouldPost = true;
-        return { ...current, ledgerPosted: true }; // จอง slot
+        return { ...current, ledgerPosted: true };
       });
       if(!shouldPost){ _posting.delete(id); continue; }
 
@@ -386,6 +387,8 @@ window.rawmatAdd=async function(){
       name,periodFrom:from,periodTo:to,amount,dueDate:due,
       payType:addPayType,
       paidDate:null,
+      ledgerPosted:false,
+      ledgerEntryId:null,
       createdAt:new Date().toISOString().slice(0,10)
     });
     document.getElementById('rm-name').value='';
