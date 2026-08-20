@@ -472,11 +472,7 @@ let _autoPostDone = false;
 
 onValue(ref(db,'rawmat'),snap=>{
   rawItems=snap.val()||{};
-  // autoPostDue รันครั้งเดียวตอนโหลดหน้า ไม่รันซ้ำทุกครั้งที่ Firebase เปลี่ยน
-  if(!_autoPostDone){
-    _autoPostDone = true;
-    autoPostDue(rawItems);
-  }
+  autoPostDue(rawItems);
   render();
 });
 </script>
