@@ -411,31 +411,6 @@ window.toggleEditType = function(type){
   document.getElementById('edit-check').className='paytype-btn'+(editPayType==='check'?' active-check':'');
 };
 
-window.markPaid=async function(id){
-  const it=rawItems[id]; if(!it) return;
-  const today=new Date().toISOString().slice(0,10);
-  try{
-    const updates={paidDate:today};
-    // ลงบัญชีเฉพาะถ้ายังไม่เคยลง (เช็คถูก autoPostDue ลงไปแล้ว)
-    if(!it.ledgerPosted){
-      const method=it.payType==='check'?'check':'cash';
-      const entryRef=push(ref(ledgerDb,'entries'));
-      await set(entryRef,{
-        date: it.dueDate||today,
-        desc: `${it.name}${it.periodFrom?` (${fmtDateTH(it.periodFrom)}${it.periodTo?'–'+fmtDateTH(it.periodTo):''})` : ''}`,
-        type: 'expense',
-        method,
-        amount: +it.amount,
-        createdAt: Date.now()
-      });
-      updates.ledgerPosted=true;
-      updates.ledgerEntryId=entryRef.key;
-    }
-    await update(ref(db,'rawmat/'+id),updates);
-    showToast('✅ บันทึกการจ่ายแล้ว');
-  }catch(e){ showToast('❌ '+e.message); }
-};
-
 window.openEdit=function(id){
   const it=rawItems[id]; if(!it) return;
   editingId=id;
