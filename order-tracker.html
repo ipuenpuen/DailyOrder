@@ -931,10 +931,7 @@ window.autoSave=function autoSave(){
     if(chaumFemaleChk) entry['chaum_female_paid']=chaumFemaleChk.checked;
     // นับ checkbox ว่าเป็น "มีข้อมูล" ด้วย
     if(muayChk?.checked||pearnChk?.checked||chaumMaleChk?.checked||chaumFemaleChk?.checked) hasData=true;
-    console.log('[autoSave] hasData=',hasData,'records[currentDate]=',!!records[currentDate],
-      'muay=',muayChk?.checked,'pearn=',pearnChk?.checked,
-      'chaumM=',chaumMaleChk?.checked,'chaumF=',chaumFemaleChk?.checked);
-    if(!hasData && !records[currentDate]) { console.log('[autoSave] skipped'); return; }
+    if(!hasData && !records[currentDate]) return;
     const prev=records[currentDate]||{};
     // audit log เฉพาะกรณีแก้ไข
     const isEdit=!!records[currentDate];
