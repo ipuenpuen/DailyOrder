@@ -209,7 +209,7 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, set, push, update, onValue } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import { getDatabase, ref, set, push, update, onValue, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 // ── Firebase: rawmat (daily-order) ──
 const app = initializeApp({
@@ -236,15 +236,27 @@ const ledgerApp = initializeApp({
 const ledgerDb = getDatabase(ledgerApp);
 
 // ── auto-post ถึงกำหนดจ่าย → ลงบัญชีรายจ่าย ──
-const _posting = new Set(); // lock ป้องกันลงซ้ำระหว่างรอ Firebase
+const _posting = new Set();
 
 async function autoPostDue(items){
   const today = new Date().toISOString().slice(0,10);
   for(const [id, it] of Object.entries(items)){
     if(!it.dueDate || it.ledgerPosted || _posting.has(id)) continue;
     if(it.dueDate > today) continue;
-    _posting.add(id); // lock ไว้ก่อน
+    _posting.add(id);
     try{
+      // Transaction: ถ้า ledgerPosted ยังเป็น false → set เป็น true แบบ atomic
+      // ถ้ามีคนอื่น (tab อื่น) set ไปก่อนแล้ว transaction จะ abort และไม่ post ซ้ำ
+      const itemRef = ref(db, 'rawmat/'+id);
+      let shouldPost = false;
+      await runTransaction(itemRef, (current) => {
+        if(!current || current.ledgerPosted) return; // abort — ลงไปแล้ว
+        shouldPost = true;
+        return { ...current, ledgerPosted: true }; // จอง slot
+      });
+      if(!shouldPost){ _posting.delete(id); continue; }
+
+      // ถึงตรงนี้ได้ = เราเป็นคนแรกที่ post
       const method = it.payType==='check' ? 'check' : 'cash';
       const entryRef = push(ref(ledgerDb,'entries'));
       await set(entryRef,{
@@ -255,14 +267,13 @@ async function autoPostDue(items){
         amount: +it.amount,
         createdAt: Date.now()
       });
-      const updates = { ledgerPosted: true, ledgerEntryId: entryRef.key };
-      if(!it.paidDate){
-        updates.paidDate = it.dueDate;
-      }
-      await update(ref(db,'rawmat/'+id), updates);
+      // บันทึก entryId และ paidDate
+      const updates = { ledgerEntryId: entryRef.key };
+      if(!it.paidDate) updates.paidDate = it.dueDate;
+      await update(itemRef, updates);
     }catch(e){
-      _posting.delete(id); // ถ้า error ให้ลอง retry ได้
-      console.error('auto-post ledger error:', e);
+      _posting.delete(id);
+      console.error('auto-post error:', e);
     }
   }
 }
