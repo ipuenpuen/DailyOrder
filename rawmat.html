@@ -236,11 +236,14 @@ const ledgerApp = initializeApp({
 const ledgerDb = getDatabase(ledgerApp);
 
 // ── auto-post ถึงกำหนดจ่าย → ลงบัญชีรายจ่าย ──
+const _posting = new Set(); // lock ป้องกันลงซ้ำระหว่างรอ Firebase
+
 async function autoPostDue(items){
   const today = new Date().toISOString().slice(0,10);
   for(const [id, it] of Object.entries(items)){
-    if(!it.dueDate || it.ledgerPosted) continue;
+    if(!it.dueDate || it.ledgerPosted || _posting.has(id)) continue;
     if(it.dueDate > today) continue;
+    _posting.add(id); // lock ไว้ก่อน
     try{
       const method = it.payType==='check' ? 'check' : 'cash';
       const entryRef = push(ref(ledgerDb,'entries'));
@@ -252,13 +255,13 @@ async function autoPostDue(items){
         amount: +it.amount,
         createdAt: Date.now()
       });
-      // อัพเดท rawmat: ledgerPosted + เก็บ entryId + ถ้าเช็คหรือเงินสด → mark paid อัตโนมัติ
       const updates = { ledgerPosted: true, ledgerEntryId: entryRef.key };
       if(!it.paidDate){
         updates.paidDate = it.dueDate;
       }
       await update(ref(db,'rawmat/'+id), updates);
     }catch(e){
+      _posting.delete(id); // ถ้า error ให้ลอง retry ได้
       console.error('auto-post ledger error:', e);
     }
   }
