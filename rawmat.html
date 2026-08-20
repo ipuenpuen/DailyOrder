@@ -242,17 +242,16 @@ async function autoPostDue(items){
   const today = new Date().toISOString().slice(0,10);
   for(const [id, it] of Object.entries(items)){
     if(!it.dueDate || it.dueDate > today) continue;
-    if(_posting.has(id)) continue;
-    _posting.add(id);
+    if(_posting.has(id)) continue; // เคย post แล้วใน session นี้ หรือกำลัง post อยู่
+    _posting.add(id); // lock ตลอด session — ไม่เคยลบออกเมื่อ post สำเร็จ
     try{
-      // อ่านค่าล่าสุดจาก server โดยตรง ไม่ใช้ cache ใน memory
+      // อ่านจาก server โดยตรง
       const snap = await get(ref(db,'rawmat/'+id+'/ledgerPosted'));
-      if(snap.val() === true){ _posting.delete(id); continue; }
+      if(snap.val() === true) continue; // ลงไปแล้ว ข้ามเลย
 
-      // mark ก่อนเลย ป้องกัน onValue รอบถัดไปยิงซ้ำ
+      // mark ก่อน แล้วค่อย push
       await update(ref(db,'rawmat/'+id),{ ledgerPosted: true });
 
-      // แล้วค่อย push ลง ledger
       const method = it.payType==='check' ? 'check' : 'cash';
       const entryRef = push(ref(ledgerDb,'entries'));
       await set(entryRef,{
@@ -267,7 +266,7 @@ async function autoPostDue(items){
       if(!it.paidDate) updates.paidDate = it.dueDate;
       await update(ref(db,'rawmat/'+id), updates);
     }catch(e){
-      _posting.delete(id);
+      _posting.delete(id); // error เท่านั้นที่ unlock เพื่อให้ retry
       console.error('auto-post error:', e);
     }
   }
