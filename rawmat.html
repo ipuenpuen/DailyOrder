@@ -274,7 +274,7 @@ const MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','�
 function fmtDateTH(iso){
   if(!iso) return '—';
   const [y,m,d] = iso.split('-');
-  return `${+d}/${+m}/${+y+543}`;
+  return `${+d}/${+m}/${(+y+543).toString().slice(-2)}`;
 }
 
 function getStatus(it){
