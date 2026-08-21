@@ -354,7 +354,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import {
-  getDatabase, ref, push, remove, onValue
+  getDatabase, ref, push, remove, set, onValue
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
 /* ==========================================================================
@@ -387,6 +387,37 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const entriesRef = ref(db, 'entries');
+
+// ลบรายการซ้ำครั้งเดียวตอนโหลด
+// เก็บ rawmat_xxx ไว้ ลบ random key ที่ desc+date+amount ซ้ำกัน
+let _dedupDone = false;
+async function dedupEntries(val){
+  if(_dedupDone) return;
+  _dedupDone = true;
+  if(!val) return;
+  const entries = Object.entries(val);
+  // group by desc+date+amount
+  const seen = {};
+  const toDelete = [];
+  // เอา rawmat_ key ขึ้นก่อน เพื่อให้ถูก keep
+  const sorted = entries.sort((a,b) => {
+    const aIsRaw = a[0].startsWith('rawmat_');
+    const bIsRaw = b[0].startsWith('rawmat_');
+    return bIsRaw - aIsRaw;
+  });
+  for(const [key, entry] of sorted){
+    const sig = `${entry.date}|${entry.desc}|${entry.amount}`;
+    if(seen[sig]){
+      toDelete.push(key); // ซ้ำ — ลบออก
+    } else {
+      seen[sig] = key;
+    }
+  }
+  for(const key of toDelete){
+    await set(ref(db,'entries/'+key), null).catch(()=>{});
+  }
+  if(toDelete.length) console.log(`ลบรายการซ้ำ ${toDelete.length} รายการ`);
+}
 
 const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 
@@ -564,6 +595,7 @@ updateMonthLabel();
 function subscribeEntries(){
   onValue(entriesRef, (snapshot)=>{
     const val = snapshot.val() || {};
+    dedupEntries(val);
     entries = Object.keys(val).map(id=>({ id, ...val[id] }));
     renderAll();
     if($('tab-monthly').classList.contains('active')) renderMonthly();
