@@ -87,6 +87,19 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
 .col-due .overdue-date{color:var(--red);}
 .col-btns{display:flex;gap:.25rem;justify-content:flex-end;}
 
+/* มือถือ — ซ้อนแนวตั้ง */
+@media(max-width:600px){
+  .tbl-head{display:none;}
+  .item-row{
+    display:flex;flex-direction:column;gap:.25rem;padding:.7rem .9rem;
+  }
+  .col-name{order:1;}
+  .col-period{order:2;font-size:.72rem;color:var(--muted);}
+  .col-amount{order:3;text-align:left;font-size:.88rem;}
+  .col-due{order:4;font-size:.72rem;}
+  .col-btns{order:5;justify-content:flex-end;}
+}
+
 .toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:.5rem 1.1rem;border-radius:99px;font-size:.8rem;font-weight:600;transition:transform .25s;z-index:999;pointer-events:none;white-space:nowrap;}
 .toast.show{transform:translateX(-50%) translateY(0);}
 
