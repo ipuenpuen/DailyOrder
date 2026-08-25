@@ -254,6 +254,28 @@ async function postToLedger(id, it){
   });
 }
 
+// ── ตรวจรายการที่ถึงกำหนดแล้วแต่ยังไม่ได้ลงบัญชี ──
+async function autoPostDue(items){
+  const today = new Date().toISOString().slice(0,10);
+  for(const [id, it] of Object.entries(items)){
+    if(!it.dueDate || it.dueDate > today) continue;
+    if(it.ledgerPosted) continue;
+    try{
+      // set key คงที่ rawmat_xxx — Firebase overwrite แทนสร้างใหม่
+      // ไม่มีทางซ้ำได้เลย ไม่ว่าจะรันกี่รอบ
+      await postToLedger(id, it);
+      const updates = {
+        ledgerPosted: true,
+        ledgerEntryId: 'rawmat_'+id,
+      };
+      if(!it.paidDate) updates.paidDate = it.dueDate;
+      await update(ref(db,'rawmat/'+id), updates);
+    }catch(e){
+      console.error('auto-post error:', e);
+    }
+  }
+}
+
 let rawItems = {};
 let curFilter = 'all';
 let editingId = null;
@@ -470,6 +492,7 @@ window.delItem=async function(id){
 
 onValue(ref(db,'rawmat'), snap=>{
   rawItems = snap.val() || {};
+  autoPostDue(rawItems);
   render();
 });
 </script>
