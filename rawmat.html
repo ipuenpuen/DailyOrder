@@ -155,6 +155,13 @@ body{background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--ink);min-
     <button class="add-btn" onclick="rawmatAdd()">+ เพิ่มรายการ</button>
   </div>
 
+  <!-- เลือกเดือน -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+    <button onclick="shiftMonth(-1)" style="padding:.3rem .8rem;border:1.5px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:8px;font-size:1rem;cursor:pointer;">‹</button>
+    <span id="month-label" style="font-size:.95rem;font-weight:700;color:var(--ink);"></span>
+    <button onclick="shiftMonth(1)" style="padding:.3rem .8rem;border:1.5px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:8px;font-size:1rem;cursor:pointer;">›</button>
+  </div>
+
   <div class="filter-row">
     <button class="chip active" onclick="setFilter('all')">ทั้งหมด</button>
     <button class="chip" onclick="setFilter('pending')">รอจ่าย</button>
@@ -280,6 +287,16 @@ let rawItems = {};
 let curFilter = 'all';
 let editingId = null;
 
+// เดือนที่แสดงอยู่ตอนนี้ format YYYY-MM
+let curMonth = new Date().toISOString().slice(0,7);
+
+window.shiftMonth = function(delta){
+  const [y,m] = curMonth.split('-').map(Number);
+  const d = new Date(y, m-1+delta, 1);
+  curMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  render();
+};
+
 const MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
 function fmtDateTH(iso){
@@ -302,28 +319,33 @@ function showToast(msg){
 }
 
 function render(){
+  // อัปเดต label เดือน
+  const [cy,cm] = curMonth.split('-');
+  document.getElementById('month-label').textContent = `${MONTHS[+cm-1]} ${+cy+543}`;
+
   document.querySelectorAll('.chip').forEach(c=>{
     const m=c.getAttribute('onclick').match(/'([^']+)'/);
     if(m) c.classList.toggle('active',m[1]===curFilter);
   });
 
-  const entries=Object.entries(rawItems).filter(([,it])=>curFilter==='all'||getStatus(it)===curFilter);
+  // กรองแค่เดือนที่เลือก โดยดูจาก dueDate เป็นหลัก
+  const entries=Object.entries(rawItems).filter(([,it])=>{
+    const monthKey = it.dueDate
+      ? it.dueDate.slice(0,7)
+      : (it.periodFrom||it.createdAt||'').slice(0,7);
+    if(monthKey !== curMonth) return false;
+    return curFilter==='all'||getStatus(it)===curFilter;
+  });
+
   if(!entries.length){
-    document.getElementById('rm-list').innerHTML='<div class="list-wrap"><div class="empty">ไม่มีรายการ</div></div>';
+    document.getElementById('rm-list').innerHTML='<div class="list-wrap"><div class="empty">ไม่มีรายการในเดือนนี้</div></div>';
     return;
   }
 
-  const groups={};
-  entries.forEach(([id,it])=>{
-    const k=(it.periodFrom||it.createdAt||'').slice(0,7)||'ไม่ระบุ';
-    (groups[k]=groups[k]||[]).push([id,it]);
-  });
+  // เรียงตาม dueDate
+  const sorted = entries.sort((a,b)=>(a[1].dueDate||'9999')>(b[1].dueDate||'9999')?1:-1);
 
-  const html=Object.keys(groups).sort((a,b)=>b>a?1:-1).map(ym=>{
-    const [y,m]=ym.split('-');
-    const mLabel=ym==='ไม่ระบุ'?'ไม่ระบุเดือน':`${MONTHS[+m-1]} ${+y+543}`;
-    const rows=groups[ym]
-      .sort((a,b)=>(a[1].dueDate||'9999')>(b[1].dueDate||'9999')?1:-1)
+  const rows=sorted
       .map(([id,it])=>{
         const s=getStatus(it);
         const bCls={overdue:'badge-overdue',pending:'badge-pending',paid:'badge-paid',nodate:'badge-nodate'}[s];
@@ -359,14 +381,8 @@ function render(){
           </div>
         </div>`;
       }).join('');
-    const header=`<div class="tbl-head"><div>ชื่อ</div><div>วันที่งวด</div><div style="text-align:right;">จำนวนเงิน</div><div>จ่ายวันที่</div><div></div></div>`;
-    return `<div class="month-section">
-      <div class="month-title">${mLabel}</div>
-      <div class="list-wrap">${header}${rows}</div>
-    </div>`;
-  }).join('');
-
-  document.getElementById('rm-list').innerHTML=html;
+  const header=`<div class="tbl-head"><div>ชื่อ</div><div>วันที่งวด</div><div style="text-align:right;">จำนวนเงิน</div><div>จ่ายวันที่</div><div></div></div>`;
+  document.getElementById('rm-list').innerHTML=`<div class="list-wrap">${header}${rows.join('')}</div>`;
 }
 
 window.setFilter=f=>{ curFilter=f; render(); };
