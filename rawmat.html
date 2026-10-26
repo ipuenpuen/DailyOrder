@@ -350,8 +350,16 @@ function render(){
     return;
   }
 
-  // เรียงตาม dueDate
-  const sorted = entries.sort((a,b)=>(a[1].dueDate||'9999')>(b[1].dueDate||'9999')?1:-1);
+  // เรียงตาม status ก่อน แล้วค่อยเรียงตามวันที่
+  const statusOrder = { overdue:0, pending:1, nodate:2, paid:3 };
+  const sorted = entries.sort((a,b)=>{
+    const sa = getStatus(a[1]), sb = getStatus(b[1]);
+    if(statusOrder[sa] !== statusOrder[sb]) return statusOrder[sa]-statusOrder[sb];
+    // จ่ายแล้ว → เรียงตาม paidDate ล่าสุดก่อน
+    if(sa==='paid') return (b[1].paidDate||'')>(a[1].paidDate||'') ? 1 : -1;
+    // อื่นๆ → เรียงตาม dueDate น้อยไปมาก
+    return (a[1].dueDate||'9999')>(b[1].dueDate||'9999') ? 1 : -1;
+  });
 
   const rows=sorted
       .map(([id,it])=>{
